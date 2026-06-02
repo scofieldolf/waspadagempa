@@ -212,6 +212,16 @@ function MapClickHandler({ onMapClick }: MapClickHandlerProps) {
   return null;
 }
 
+// Component to listen to map zoom changes and propagate back to parent state
+function MapZoomListener({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
+  const map = useMapEvents({
+    zoomend() {
+      onZoomChange(map.getZoom());
+    }
+  });
+  return null;
+}
+
 export default function MapCanvas({
   locale,
   sidebarCollapsed,
@@ -236,6 +246,13 @@ export default function MapCanvas({
 }: MapCanvasProps) {
   
   const t = translations[locale];
+
+  // Map Zoom State
+  const [zoom, setZoom] = useState<number>(5);
+
+  // Zoom-sensitive sizing helpers to prevent clutter when zoomed out
+  const zoomFactor = zoom <= 4 ? 0.8 : zoom === 5 ? 1.4 : zoom === 6 ? 2.2 : zoom === 7 ? 3.0 : zoom === 8 ? 4.2 : 5.5;
+  const baseOffset = zoom <= 4 ? 0.5 : zoom === 5 ? 1.0 : zoom === 6 ? 1.5 : zoom === 7 ? 2.0 : zoom === 8 ? 2.5 : 3.0;
 
   // Safe Radius Calculator State
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -543,10 +560,10 @@ export default function MapCanvas({
     const mag = eq.mag;
     const depth = eq.depth;
     
-    // Circle radius scaling based on magnitude
+    // Circle radius scaling based on magnitude and current zoom level
     const radius = isSelected 
-      ? (mag * 3.5) + 6 
-      : (mag * 3.5) + 2;
+      ? (mag * zoomFactor) + baseOffset + 5 
+      : (mag * zoomFactor) + baseOffset;
 
     let color = "#78716c"; // stone
     let fillColor = "#a8a29e";
@@ -695,6 +712,9 @@ export default function MapCanvas({
           }}
         />
 
+        {/* Dynamic Zoom Listener */}
+        <MapZoomListener onZoomChange={setZoom} />
+
         {/* Minimalist CartoDB Positron base tile layer */}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -841,7 +861,7 @@ export default function MapCanvas({
               {eq.tsunami && (
                 <CircleMarker
                   center={[eq.lat, eq.lng]}
-                  radius={(eq.mag * 3.5) + 2}
+                  radius={(eq.mag * zoomFactor) + baseOffset}
                   color="#ef4444"
                   fillColor="#ef4444"
                   weight={1}
@@ -853,7 +873,7 @@ export default function MapCanvas({
               {eq.id === latestPlaybackEqId && (
                 <CircleMarker
                   center={[eq.lat, eq.lng]}
-                  radius={(eq.mag * 5) + 12}
+                  radius={((eq.mag * zoomFactor) + baseOffset) * 1.5 + 4}
                   color="#a855f7" // Purple wave
                   fillColor="#a855f7"
                   weight={1}
