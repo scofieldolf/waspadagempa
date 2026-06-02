@@ -38,7 +38,12 @@ export const translations = {
     surabayaZone: "Surabaya Coastal Buffer",
     surabayaDesc: "Elevated storm surge and industrial port marsh flooding.",
     riskZone: "Risk Zone",
-    projectionModel: "Model"
+    projectionModel: "Model",
+    nearestEarthquake: "Nearest Earthquake",
+    distanceToNearest: "Distance to nearest epicenter:",
+    statusWaspada: "Warning - Vibration Impact",
+    statusAman: "Safe",
+    clearDistance: "Clear Location"
   },
   id: {
     subtitle: "Risiko Bencana & Iklim",
@@ -77,6 +82,11 @@ export const translations = {
     surabayaZone: "Penyangga Pesisir Surabaya",
     surabayaDesc: "Peningkatan gelombang badai dan banjir rawa pelabuhan industri.",
     riskZone: "Zona Risiko",
-    projectionModel: "Model"
+    projectionModel: "Model",
+    nearestEarthquake: "Gempa Terdekat",
+    distanceToNearest: "Jarak ke pusat gempa terdekat:",
+    statusWaspada: "Waspada - Dampak Getaran",
+    statusAman: "Aman",
+    clearDistance: "Hapus Lokasi"
   }
 };

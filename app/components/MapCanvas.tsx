@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Polygon } from "react-leaflet";
+import React, { useEffect, useState } from "react";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Polygon, useMapEvents, Polyline } from "react-leaflet";
 import L from "leaflet";
 import { MockEarthquake } from "./ControlSidebar";
-import { Clock, Waves, Compass, AlertCircle } from "lucide-react";
+import { Clock, Waves, Compass, AlertCircle, MapPin, AlertTriangle, Radar } from "lucide-react";
 import { Locale, translations } from "./translations";
+import { calculateDistance } from "../utils/geo";
 
 // Mock Earthquake Data centered around Indonesia
 const MOCK_EARTHQUAKES: MockEarthquake[] = [
@@ -158,6 +159,20 @@ function MapResizeTrigger({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
   return null;
 }
 
+// Component to handle map clicks and propagate coordinates back to parent
+interface MapClickHandlerProps {
+  onMapClick: (lat: number, lng: number) => void;
+}
+
+function MapClickHandler({ onMapClick }: MapClickHandlerProps) {
+  useMapEvents({
+    click(e) {
+      onMapClick(e.latlng.lat, e.latlng.lng);
+    }
+  });
+  return null;
+}
+
 export default function MapCanvas({
   locale,
   sidebarCollapsed,
@@ -171,6 +186,9 @@ export default function MapCanvas({
   
   const t = translations[locale];
 
+  // Safe Radius Calculator State
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
   // Filter mock earthquakes based on user criteria
   const filteredEarthquakes = MOCK_EARTHQUAKES.filter((eq) => {
     if (!showEarthquakes) return false;
@@ -178,6 +196,22 @@ export default function MapCanvas({
     if (earthquakeFilter === "Mag 6+") return eq.mag >= 6.0;
     return true;
   });
+
+  // Calculate nearest earthquake to user clicked location
+  let nearestEarthquake: MockEarthquake | null = null;
+  let nearestDistance = Infinity;
+
+  if (userLocation && filteredEarthquakes.length > 0) {
+    for (const eq of filteredEarthquakes) {
+      const dist = calculateDistance(userLocation.lat, userLocation.lng, eq.lat, eq.lng);
+      if (dist < nearestDistance) {
+        nearestDistance = dist;
+        nearestEarthquake = eq;
+      }
+    }
+  }
+
+  const activeNearestEarthquake = nearestEarthquake;
 
   // Calculate polygon visual styles dynamically for Climate Risk Years
   const getClimateAreaStyles = (area: ClimateRiskArea) => {
@@ -264,6 +298,13 @@ export default function MapCanvas({
 
         {/* Dynamic Resize hook */}
         <MapResizeTrigger sidebarCollapsed={sidebarCollapsed} />
+
+        {/* Safe Radius Click Handler */}
+        <MapClickHandler
+          onMapClick={(lat, lng) => {
+            setUserLocation({ lat, lng });
+          }}
+        />
 
         {/* Minimalist CartoDB Positron base tile layer */}
         <TileLayer
@@ -411,49 +452,129 @@ export default function MapCanvas({
             </React.Fragment>
           );
         })}
+
+        {/* User Click Location Marker & Polyline to Nearest Epicenter */}
+        {userLocation && (
+          <CircleMarker
+            center={[userLocation.lat, userLocation.lng]}
+            radius={6}
+            color="#1c1917" // stone-900
+            fillColor="#78716c" // stone-500
+            fillOpacity={0.8}
+            weight={2}
+          />
+        )}
+
+        {userLocation && activeNearestEarthquake && (
+          <Polyline
+            positions={[
+              [userLocation.lat, userLocation.lng],
+              [activeNearestEarthquake.lat, activeNearestEarthquake.lng]
+            ]}
+            pathOptions={{
+              color: "#78716c", // stone-500 gray
+              weight: 1.5,
+              dashArray: "5, 5",
+              opacity: 0.8
+            }}
+          />
+        )}
       </MapContainer>
 
-      {/* Floating Scale & Legend Overlay on bottom-right of Map */}
-      {(showEarthquakes || showClimateRisk) && (
-        <div className="absolute bottom-6 right-6 z-[500] bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-4 rounded-xl shadow-lg text-stone-800 pointer-events-auto max-w-[210px] flex flex-col space-y-3 font-sans">
-          <div className="flex items-center space-x-1.5">
-            <Compass className="w-4 h-4 text-stone-500 animate-spin-slow" />
-            <span className="text-[11px] font-bold text-stone-900 uppercase tracking-wider font-mono">{t.legend}</span>
-          </div>
-          
-          {/* Earthquake Legend */}
-          {showEarthquakes && (
-            <div className="space-y-1.5">
-              <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.magnitude}</span>
-              <div className="flex flex-col gap-1 text-[10px]">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-rose-400 border border-rose-600" />
-                  <span className="text-stone-600 font-medium">{locale === "id" ? "Parah (Mag 6.0+)" : "Mag 6.0+ (Severe)"}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-amber-600" />
-                  <span className="text-stone-600 font-medium">{locale === "id" ? "Sedang (Mag 5.0+)" : "Mag 5.0+ (Moderate)"}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-stone-500 border border-stone-600" />
-                  <span className="text-stone-600 font-medium">{locale === "id" ? "Ringan (Mag < 5.0)" : "Mag < 5.0 (Minor)"}</span>
-                </div>
+      {/* Floating Overlays Container on bottom-right of Map */}
+      <div className="absolute bottom-6 right-6 z-[500] pointer-events-none flex flex-col items-end space-y-3">
+        {/* Safe Radius Calculator Card */}
+        {userLocation && activeNearestEarthquake && (
+          <div className="pointer-events-auto bg-stone-900/95 text-stone-100 backdrop-blur-md border border-stone-850 p-4 rounded-xl shadow-lg w-[240px] flex flex-col space-y-2.5 font-sans animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-1.5">
+                <Radar className="w-4 h-4 text-red-400 animate-pulse" />
+                <span className="text-[11px] font-bold text-stone-200 uppercase tracking-wider font-mono">
+                  {t.nearestEarthquake}
+                </span>
               </div>
+              <button
+                onClick={() => setUserLocation(null)}
+                className="text-[10px] text-stone-400 hover:text-white transition-colors font-semibold"
+              >
+                {t.clearDistance}
+              </button>
             </div>
-          )}
 
-          {/* Climate Risk Legend */}
-          {showClimateRisk && (
-            <div className="space-y-1.5 border-t border-stone-200/50 pt-2.5">
-              <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.climateRiskLegend}</span>
-              <div className="flex items-center gap-1.5 text-[10px]">
-                <div className="flex-1 h-2 rounded bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 border border-stone-200/30" />
-                <span className="text-stone-500 font-mono font-bold uppercase">{climateYear}</span>
+            <div className="space-y-1">
+              <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">
+                {t.distanceToNearest}
+              </span>
+              <div className="flex items-baseline space-x-1.5">
+                <span className="text-2xl font-bold font-mono tracking-tight text-white">
+                  {nearestDistance.toLocaleString(locale === "id" ? "id-ID" : "en-US")}
+                </span>
+                <span className="text-xs font-semibold text-stone-400 font-mono">km</span>
               </div>
             </div>
-          )}
-        </div>
-      )}
+
+            <div className="pt-2 border-t border-stone-800/80 flex items-center space-x-1.5">
+              {nearestDistance < 100 ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                  <span className="text-[10px] font-bold text-amber-400 uppercase font-mono">
+                    {t.statusWaspada}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-[10px] font-bold text-emerald-400 uppercase font-mono">
+                    {t.statusAman}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Legend Overlay */}
+        {(showEarthquakes || showClimateRisk) && (
+          <div className="pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-4 rounded-xl shadow-lg text-stone-800 max-w-[210px] flex flex-col space-y-3 font-sans">
+            <div className="flex items-center space-x-1.5">
+              <Compass className="w-4 h-4 text-stone-500 animate-spin-slow" />
+              <span className="text-[11px] font-bold text-stone-900 uppercase tracking-wider font-mono">{t.legend}</span>
+            </div>
+            
+            {/* Earthquake Legend */}
+            {showEarthquakes && (
+              <div className="space-y-1.5">
+                <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.magnitude}</span>
+                <div className="flex flex-col gap-1 text-[10px]">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-rose-400 border border-rose-600" />
+                    <span className="text-stone-600 font-medium">{locale === "id" ? "Parah (Mag 6.0+)" : "Mag 6.0+ (Severe)"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-amber-600" />
+                    <span className="text-stone-600 font-medium">{locale === "id" ? "Sedang (Mag 5.0+)" : "Mag 5.0+ (Moderate)"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-stone-500 border border-stone-600" />
+                    <span className="text-stone-600 font-medium">{locale === "id" ? "Ringan (Mag < 5.0)" : "Mag < 5.0 (Minor)"}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Climate Risk Legend */}
+            {showClimateRisk && (
+              <div className="space-y-1.5 border-t border-stone-200/50 pt-2.5">
+                <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.climateRiskLegend}</span>
+                <div className="flex items-center gap-1.5 text-[10px]">
+                  <div className="flex-1 h-2 rounded bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 border border-stone-200/30" />
+                  <span className="text-stone-500 font-mono font-bold uppercase">{climateYear}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
