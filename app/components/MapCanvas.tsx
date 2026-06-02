@@ -1065,7 +1065,7 @@ export default function MapCanvas({
             {/* Header */}
             <div className="p-4 border-b border-stone-200 flex items-center justify-between bg-stone-100/50">
               <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-lg bg-stone-950 flex items-center justify-center text-white shadow-md">
+                <div className="w-8 h-8 rounded-lg bg-[#cc785c] flex items-center justify-center text-white shadow-md">
                   <Sparkles className="w-4 h-4 text-amber-400" />
                 </div>
                 <div>

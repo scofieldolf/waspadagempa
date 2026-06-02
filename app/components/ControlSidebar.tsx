@@ -105,7 +105,7 @@ export default function ControlSidebar({
         {/* Header */}
         <div className="p-6 border-b border-stone-200/50 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-stone-950 flex items-center justify-center text-stone-50 shadow-md">
+            <div className="w-8 h-8 rounded-lg bg-[#cc785c] flex items-center justify-center text-stone-50 shadow-md">
               <Compass className="w-4 h-4 animate-spin-slow" />
             </div>
             <div>
