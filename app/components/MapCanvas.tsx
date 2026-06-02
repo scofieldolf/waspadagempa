@@ -266,6 +266,9 @@ export default function MapCanvas({
   // In-App Toast Alerts state
   const [toastAlert, setToastAlert] = useState<MockEarthquake | null>(null);
 
+  // Legend Collapsible State
+  const [legendExpanded, setLegendExpanded] = useState<boolean>(true);
+
   // --- ⏳ Time Travel Playback States & Logic ---
   const [playbackIndex, setPlaybackIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -328,6 +331,14 @@ export default function MapCanvas({
   const [briefingContent, setBriefingContent] = useState<string | null>(null);
   const [showBriefingModal, setShowBriefingModal] = useState<boolean>(false);
   const [copiedBriefing, setCopiedBriefing] = useState<boolean>(false);
+
+  // Auto-collapse panels on mobile to keep viewport clean
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setStatsExpanded(false);
+      setLegendExpanded(false);
+    }
+  }, []);
 
   // Fetch live earthquake data from USGS or BMKG proxy
   const fetchEarthquakes = useCallback(async (period: "day" | "week" = "day", source: "usgs" | "bmkg" = "usgs") => {
@@ -458,15 +469,21 @@ export default function MapCanvas({
     statsTotalDepth += eq.depth;
 
     const loc = eq.location.toLowerCase();
-    if (loc.includes("sumatra") || loc.includes("aceh") || loc.includes("mentawai") || loc.includes("nias")) {
+    const isSumatra = loc.includes("sumatra") || loc.includes("sumatera") || loc.includes("aceh") || loc.includes("mentawai") || loc.includes("nias") || loc.includes("sumut") || loc.includes("sumbar") || loc.includes("sumsel") || loc.includes("bengkulu") || loc.includes("jambi") || loc.includes("lampung") || loc.includes("riau") || loc.includes("kepri") || loc.includes("bangka") || loc.includes("belitung") || loc.includes("simeulue") || loc.includes("tapanuli") || loc.includes("nias");
+    const isJava = loc.includes("java") || loc.includes("jawa") || loc.includes("sunda") || loc.includes("banten") || loc.includes("jakarta") || loc.includes("jabar") || loc.includes("jateng") || loc.includes("jatim") || loc.includes("diy") || loc.includes("yogyakarta") || loc.includes("jember") || loc.includes("banyuwangi") || loc.includes("malang") || loc.includes("blitar") || loc.includes("tulungagung") || loc.includes("trenggalek") || loc.includes("pacitan") || loc.includes("pangandaran") || loc.includes("tasikmalaya") || loc.includes("garut") || loc.includes("cianjur") || loc.includes("sukabumi") || loc.includes("lebak") || loc.includes("pandeglang") || loc.includes("serang") || loc.includes("semarang") || loc.includes("cilacap") || loc.includes("kebumen") || loc.includes("purworejo") || loc.includes("bantul") || loc.includes("gunungkidul") || loc.includes("kulonprogo");
+    const isSulawesi = loc.includes("sulawesi") || loc.includes("gorontalo") || loc.includes("minahasa") || loc.includes("palu") || loc.includes("sulsel") || loc.includes("sulteng") || loc.includes("sulut") || loc.includes("sultra") || loc.includes("sulbar") || loc.includes("makassar") || loc.includes("manado") || loc.includes("kendari") || loc.includes("poso") || loc.includes("luwu") || loc.includes("toraja") || loc.includes("mamuju") || loc.includes("donggala") || loc.includes("tolitoli") || loc.includes("buol") || loc.includes("morowali") || loc.includes("banggai");
+    const isBanda = loc.includes("banda") || loc.includes("maluku") || loc.includes("seram") || loc.includes("ambon") || loc.includes("moluccas") || loc.includes("halmahera") || loc.includes("ternate") || loc.includes("tidore") || loc.includes("morotai") || loc.includes("sula") || loc.includes("buru") || loc.includes("tual") || loc.includes("dobo") || loc.includes("saumlaki");
+    const isPapua = loc.includes("papua") || loc.includes("irian") || loc.includes("biak") || loc.includes("jayapura") || loc.includes("sorong") || loc.includes("manokwari") || loc.includes("fakfak") || loc.includes("kaimana") || loc.includes("nabire") || loc.includes("mimika") || loc.includes("timika") || loc.includes("merauke") || loc.includes("serui") || loc.includes("yapen") || loc.includes("waropen") || loc.includes("supiori") || loc.includes("sarmi") || loc.includes("bintuni") || loc.includes("rajaampat");
+
+    if (isSumatra) {
       sectorSumatra++;
-    } else if (loc.includes("java") || loc.includes("jawa") || loc.includes("sunda") || loc.includes("banten") || loc.includes("jakarta")) {
+    } else if (isJava) {
       sectorJava++;
-    } else if (loc.includes("sulawesi") || loc.includes("gorontalo") || loc.includes("minahasa") || loc.includes("palu")) {
+    } else if (isSulawesi) {
       sectorSulawesi++;
-    } else if (loc.includes("banda") || loc.includes("maluku") || loc.includes("seram") || loc.includes("ambon")) {
+    } else if (isBanda) {
       sectorBanda++;
-    } else if (loc.includes("papua") || loc.includes("irian") || loc.includes("biak") || loc.includes("jayapura")) {
+    } else if (isPapua) {
       sectorPapua++;
     } else {
       sectorOthers++;
@@ -1067,7 +1084,7 @@ export default function MapCanvas({
 
       {/* 📊 Collapsible Statistics Dashboard Panel — Floating Bottom Left */}
       {showStatsDashboard && (
-        <div className="absolute bottom-6 left-6 z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 rounded-xl shadow-lg w-[300px] font-sans flex flex-col overflow-hidden animate-fadeIn">
+        <div className="absolute bottom-6 left-4 right-4 md:left-6 md:right-auto md:w-[300px] z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 rounded-xl shadow-lg font-sans flex flex-col overflow-hidden animate-fadeIn">
           {/* Header */}
           <div 
             onClick={() => setStatsExpanded(!statsExpanded)}
@@ -1086,7 +1103,7 @@ export default function MapCanvas({
 
           {/* Collapsible Content */}
           {statsExpanded && (
-            <div className="p-4 space-y-4 max-h-[320px] overflow-y-auto">
+            <div className="p-4 space-y-4 max-h-[60vh] md:max-h-[380px] overflow-y-auto">
               {/* Quick Metrics Grid */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono">
@@ -1361,100 +1378,114 @@ export default function MapCanvas({
           </div>
         )}
 
-        {/* Legend Overlay */}
-        {(showEarthquakes || showClimateRisk || showTectonicPlates || showHeatmap) && (
-          <div className="pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-4 rounded-xl shadow-lg text-stone-800 max-w-[210px] flex flex-col space-y-3 font-sans">
+        </div>
+
+      {/* Legend Overlay — Floating Top-Right on Mobile to avoid overlapping Stats Dashboard, Bottom-Right on Desktop */}
+      {(showEarthquakes || showClimateRisk || showTectonicPlates || showHeatmap) && (
+        <div className="absolute top-28 right-4 md:top-auto md:bottom-6 md:right-6 z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-3.5 rounded-xl shadow-lg text-stone-800 w-[180px] md:w-[210px] flex flex-col space-y-3 font-sans animate-fadeIn">
+          {/* Legend Title / Collapsible Toggle */}
+          <div 
+            onClick={() => setLegendExpanded(!legendExpanded)}
+            className="flex items-center justify-between cursor-pointer select-none"
+          >
             <div className="flex items-center space-x-1.5">
               <Compass className="w-4 h-4 text-stone-500 animate-spin-slow" />
               <span className="text-[11px] font-bold text-stone-900 uppercase tracking-wider font-mono">{t.legend}</span>
             </div>
-            
-            {/* Magnitude vs Depth Legend */}
-            {showEarthquakes && (
-              <div className="space-y-1.5">
-                <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">
-                  {colorMode === "depth" ? t.colorDepth : t.magnitude}
-                </span>
-                
-                {colorMode === "depth" ? (
-                  <div className="flex flex-col gap-1 text-[10px]">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-rose-500 border border-rose-600" />
-                      <span className="text-stone-600 font-medium">{t.shallow}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-orange-500 border border-orange-600" />
-                      <span className="text-stone-600 font-medium">{t.intermediate}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-sky-500 border border-sky-600" />
-                      <span className="text-stone-600 font-medium">{t.deep}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-1 text-[10px]">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-rose-400 border border-rose-600" />
-                      <span className="text-stone-600 font-medium">{locale === "id" ? "Parah (Mag 6.0+)" : "Mag 6.0+ (Severe)"}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-amber-600" />
-                      <span className="text-stone-600 font-medium">{locale === "id" ? "Sedang (Mag 5.0+)" : "Mag 5.0+ (Moderate)"}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-stone-500 border border-stone-600" />
-                      <span className="text-stone-600 font-medium">{locale === "id" ? "Ringan (Mag < 5.0)" : "Mag < 5.0 (Minor)"}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Climate Risk Legend */}
-            {showClimateRisk && (
-              <div className="space-y-1.5 border-t border-stone-200/50 pt-2.5">
-                <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.climateRiskLegend}</span>
-                <div className="flex items-center gap-1.5 text-[10px]">
-                  <div className="flex-1 h-2 rounded bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 border border-stone-200/30" />
-                  <span className="text-stone-500 font-mono font-bold uppercase">{climateYear}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Tectonic Plates Legend */}
-            {showTectonicPlates && (
-              <div className="space-y-1.5 border-t border-stone-200/50 pt-2.5">
-                <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.tectonicPlates}</span>
-                <div className="flex flex-col gap-1.5 text-[10px]">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <div className="w-2.5 h-[2px] bg-orange-500" />
-                      <div className="w-1 h-[2px] bg-orange-500 opacity-40" />
-                      <div className="w-1.5 h-[2px] bg-orange-500" />
-                    </div>
-                    <span className="text-stone-600 font-medium">{t.plateBoundary}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-[1.5px] bg-rose-500 shrink-0" />
-                    <span className="text-stone-600 font-medium">{t.faultLines}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Seismic Heatmap Legend */}
-            {showHeatmap && (
-              <div className="space-y-1.5 border-t border-stone-200/50 pt-2.5">
-                <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.heatmapToggle}</span>
-                <div className="flex items-center gap-2 text-[10px]">
-                  <div className="w-4 h-4 rounded bg-rose-600/20 border border-rose-500/10 shrink-0" />
-                  <span className="text-stone-600 font-medium">{locale === "id" ? "Zona Stres Kepadatan" : "Seismic Density Hotspot"}</span>
-                </div>
-              </div>
-            )}
+            <button className="text-stone-400 hover:text-stone-700 transition-colors">
+              {legendExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            </button>
           </div>
-        )}
-      </div>
+
+          {legendExpanded && (
+            <>
+              {/* Magnitude vs Depth Legend */}
+              {showEarthquakes && (
+                <div className="space-y-1.5">
+                  <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">
+                    {colorMode === "depth" ? t.colorDepth : t.magnitude}
+                  </span>
+                  
+                  {colorMode === "depth" ? (
+                    <div className="flex flex-col gap-1 text-[10px]">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-rose-500 border border-rose-600" />
+                        <span className="text-stone-600 font-medium">{t.shallow}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-orange-500 border border-orange-600" />
+                        <span className="text-stone-600 font-medium">{t.intermediate}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-sky-500 border border-sky-600" />
+                        <span className="text-stone-600 font-medium">{t.deep}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1 text-[10px]">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-rose-400 border border-rose-600" />
+                        <span className="text-stone-600 font-medium">{locale === "id" ? "Parah (Mag 6.0+)" : "Mag 6.0+ (Severe)"}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-amber-600" />
+                        <span className="text-stone-600 font-medium">{locale === "id" ? "Sedang (Mag 5.0+)" : "Mag 5.0+ (Moderate)"}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-stone-500 border border-stone-600" />
+                        <span className="text-stone-600 font-medium">{locale === "id" ? "Ringan (Mag < 5.0)" : "Mag < 5.0 (Minor)"}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Climate Risk Legend */}
+              {showClimateRisk && (
+                <div className="space-y-1.5 border-t border-stone-200/50 pt-2.5">
+                  <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.climateRiskLegend}</span>
+                  <div className="flex items-center gap-1.5 text-[10px]">
+                    <div className="flex-1 h-2 rounded bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 border border-stone-200/30" />
+                    <span className="text-stone-500 font-mono font-bold uppercase">{climateYear}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Tectonic Plates Legend */}
+              {showTectonicPlates && (
+                <div className="space-y-1.5 border-t border-stone-200/50 pt-2.5">
+                  <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.tectonicPlates}</span>
+                  <div className="flex flex-col gap-1.5 text-[10px]">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <div className="w-2.5 h-[2px] bg-orange-500" />
+                        <div className="w-1 h-[2px] bg-orange-500 opacity-40" />
+                        <div className="w-1.5 h-[2px] bg-orange-500" />
+                      </div>
+                      <span className="text-stone-600 font-medium">{t.plateBoundary}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-[1.5px] bg-rose-500 shrink-0" />
+                      <span className="text-stone-600 font-medium">{t.faultLines}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Seismic Heatmap Legend */}
+              {showHeatmap && (
+                <div className="space-y-1.5 border-t border-stone-200/50 pt-2.5">
+                  <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.heatmapToggle}</span>
+                  <div className="flex items-center gap-2 text-[10px]">
+                    <div className="w-4 h-4 rounded bg-rose-600/20 border border-rose-500/10 shrink-0" />
+                    <span className="text-stone-600 font-medium">{locale === "id" ? "Zona Stres Kepadatan" : "Seismic Density Hotspot"}</span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
