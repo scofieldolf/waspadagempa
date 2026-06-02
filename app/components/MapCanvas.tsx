@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Polygon, useMapEvents, Polyline } from "react-leaflet";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Polygon, useMapEvents, Polyline, Circle } from "react-leaflet";
 import L from "leaflet";
 import { MockEarthquake } from "./ControlSidebar";
-import { Clock, Waves, Compass, AlertCircle, MapPin, AlertTriangle, Radar, RefreshCw } from "lucide-react";
+import { 
+  Clock, Waves, Compass, AlertCircle, MapPin, AlertTriangle, Radar, RefreshCw,
+  Play, Pause, BarChart3, Sparkles, ChevronUp, ChevronDown, Check, Copy, X 
+} from "lucide-react";
 import { Locale, translations } from "./translations";
 import { calculateDistance } from "../utils/geo";
 
 // Geographic bounding box for Indonesia & Ring of Fire region
-// lat: -20 to 30 (covers all of Indonesia, Philippines, PNG)
-// lng: 80 to 155 (covers Indian Ocean fault to Pacific)
 const INDONESIA_BBOX = { minLat: -20, maxLat: 30, minLng: 80, maxLng: 155 };
 
 // Mock Climate Risk Area coordinates with translation keys
@@ -72,11 +73,6 @@ const CLIMATE_RISK_AREAS: ClimateRiskArea[] = [
     riskGrowthFactor: 1.5
   }
 ];
-
-// ============================================================
-// TECTONIC PLATES & ACTIVE FAULT LINE COORDINATE DATA
-// Sources: USGS Hazard Map, BMKG, and published geological surveys
-// ============================================================
 
 // Major Plate Boundary Lines (orange dashed — subduction / convergent)
 const PLATE_BOUNDARIES: { name: string; coords: [number, number][]; color: string }[] = [
@@ -161,6 +157,13 @@ interface MapCanvasProps {
   selectedEarthquake: MockEarthquake | null;
   setSelectedEarthquake: (eq: MockEarthquake | null) => void;
   showTectonicPlates: boolean;
+  // New features
+  showHeatmap: boolean;
+  setShowHeatmap: (show: boolean) => void;
+  showTimeTravel: boolean;
+  setShowTimeTravel: (show: boolean) => void;
+  showStatsDashboard: boolean;
+  setShowStatsDashboard: (show: boolean) => void;
 }
 
 // Component to handle map centering when selected earthquake changes
@@ -212,7 +215,13 @@ export default function MapCanvas({
   climateYear,
   selectedEarthquake,
   setSelectedEarthquake,
-  showTectonicPlates
+  showTectonicPlates,
+  showHeatmap,
+  setShowHeatmap,
+  showTimeTravel,
+  setShowTimeTravel,
+  showStatsDashboard,
+  setShowStatsDashboard
 }: MapCanvasProps) {
   
   const t = translations[locale];
@@ -226,12 +235,75 @@ export default function MapCanvas({
   const [dataError, setDataError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Fetch live earthquake data from USGS (via /api/disaster proxy with 10min cache)
-  const fetchEarthquakes = useCallback(async () => {
+  // --- ⏳ Time Travel Playback States & Logic ---
+  const [playbackIndex, setPlaybackIndex] = useState<number>(0);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(2); // 1x, 2x, 5x, 10x
+
+  // Sort active earthquakes chronologically (earliest first)
+  const chronologicalEarthquakes = useMemo(() => {
+    return [...earthquakes].sort(
+      (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
+    );
+  }, [earthquakes]);
+
+  // Adjust playbackIndex to end of list when Time Travel triggers
+  useEffect(() => {
+    if (showTimeTravel) {
+      setPlaybackIndex(Math.max(0, chronologicalEarthquakes.length - 1));
+      setIsPlaying(false);
+    }
+  }, [showTimeTravel, chronologicalEarthquakes.length]);
+
+  // Playback timer stepper
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    if (isPlaying && showTimeTravel && chronologicalEarthquakes.length > 0) {
+      const intervalMs = playbackSpeed === 1 
+        ? 1500 
+        : playbackSpeed === 2 
+          ? 800 
+          : playbackSpeed === 5 
+            ? 300 
+            : 100; // Fast step at 10x
+
+      timer = setInterval(() => {
+        setPlaybackIndex((prev) => {
+          if (prev >= chronologicalEarthquakes.length - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, intervalMs);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isPlaying, showTimeTravel, playbackSpeed, chronologicalEarthquakes.length]);
+
+  // Calculate which earthquakes are active at the current playback step
+  const activeEarthquakePool = showTimeTravel
+    ? chronologicalEarthquakes.slice(0, playbackIndex + 1)
+    : earthquakes;
+
+  const latestPlaybackEqId = showTimeTravel && chronologicalEarthquakes[playbackIndex]
+    ? chronologicalEarthquakes[playbackIndex].id
+    : null;
+
+  // --- 📊 Statistics Panel & AI Briefing States ---
+  const [statsExpanded, setStatsExpanded] = useState<boolean>(true);
+  const [loadingBriefing, setLoadingBriefing] = useState<boolean>(false);
+  const [briefingContent, setBriefingContent] = useState<string | null>(null);
+  const [showBriefingModal, setShowBriefingModal] = useState<boolean>(false);
+  const [copiedBriefing, setCopiedBriefing] = useState<boolean>(false);
+
+  // Fetch live earthquake data from USGS proxy
+  const fetchEarthquakes = useCallback(async (period: "day" | "week" = "day") => {
     setIsLoading(true);
     setDataError(null);
     try {
-      const res = await fetch("/api/disaster");
+      const res = await fetch(`/api/disaster?period=${period}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: MockEarthquake[] = await res.json();
       // Filter to Indonesia & Ring of Fire bounding box
@@ -251,14 +323,16 @@ export default function MapCanvas({
     }
   }, [locale]);
 
-  // Auto-fetch on mount and auto-refresh every 10 minutes (matches cache duration)
+  // Auto-fetch on mount and auto-refresh or reload when Time Travel changes dataset
   useEffect(() => {
-    fetchEarthquakes();
-    const interval = setInterval(fetchEarthquakes, 10 * 60 * 1000);
+    fetchEarthquakes(showTimeTravel ? "week" : "day");
+    const interval = setInterval(() => {
+      fetchEarthquakes(showTimeTravel ? "week" : "day");
+    }, 10 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [fetchEarthquakes]);
+  }, [fetchEarthquakes, showTimeTravel]);
 
-  // Format how long ago the data was fetched
+  // Format last updated readout
   const formatLastUpdated = (date: Date): string => {
     const diffMs = Date.now() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -268,8 +342,8 @@ export default function MapCanvas({
     return locale === "id" ? `${diffHours}j lalu` : `${diffHours}h ago`;
   };
 
-  // Filter live earthquake data based on user criteria
-  const filteredEarthquakes = earthquakes.filter((eq) => {
+  // Filter live earthquake data based on magnitude filter criteria
+  const filteredEarthquakes = activeEarthquakePool.filter((eq) => {
     if (!showEarthquakes) return false;
     if (earthquakeFilter === "Mag 4+") return eq.mag >= 4.0;
     if (earthquakeFilter === "Mag 6+") return eq.mag >= 6.0;
@@ -292,12 +366,101 @@ export default function MapCanvas({
 
   const activeNearestEarthquake = nearestEarthquake;
 
+  // Calculate statistics metrics dynamically
+  const statsTotal = filteredEarthquakes.length;
+  let statsMaxMag = 0;
+  let statsMaxLoc = "N/A";
+  let statsTsunami = 0;
+  let statsTotalDepth = 0;
+
+  let sectorSumatra = 0;
+  let sectorJava = 0;
+  let sectorSulawesi = 0;
+  let sectorBanda = 0;
+  let sectorPapua = 0;
+  let sectorOthers = 0;
+
+  filteredEarthquakes.forEach((eq) => {
+    if (eq.mag > statsMaxMag) {
+      statsMaxMag = eq.mag;
+      statsMaxLoc = eq.location;
+    }
+    if (eq.tsunami) statsTsunami++;
+    statsTotalDepth += eq.depth;
+
+    const loc = eq.location.toLowerCase();
+    if (loc.includes("sumatra") || loc.includes("aceh") || loc.includes("mentawai") || loc.includes("nias")) {
+      sectorSumatra++;
+    } else if (loc.includes("java") || loc.includes("jawa") || loc.includes("sunda") || loc.includes("banten")) {
+      sectorJava++;
+    } else if (loc.includes("sulawesi") || loc.includes("gorontalo") || loc.includes("minahasa") || loc.includes("palu")) {
+      sectorSulawesi++;
+    } else if (loc.includes("banda") || loc.includes("maluku") || loc.includes("seram") || loc.includes("ambon")) {
+      sectorBanda++;
+    } else if (loc.includes("papua") || loc.includes("irian") || loc.includes("biak") || loc.includes("jayapura")) {
+      sectorPapua++;
+    } else {
+      sectorOthers++;
+    }
+  });
+
+  const statsAvgDepth = statsTotal > 0 ? (statsTotalDepth / statsTotal).toFixed(1) : "0.0";
+
+  // Trigger server-side AI briefing using Gemini proxy
+  const generateAIBriefing = async () => {
+    setLoadingBriefing(true);
+    setCopiedBriefing(false);
+    try {
+      const response = await fetch("/api/briefing", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          earthquakes: filteredEarthquakes,
+          locale
+        })
+      });
+
+      if (!response.ok) throw new Error("Briefing failed");
+      const data = await response.json();
+      
+      setBriefingContent(data.briefing);
+      setShowBriefingModal(true);
+    } catch (err) {
+      console.error(err);
+      const fallback = locale === "id"
+        ? `# ⚠️ Kegagalan Penghubung AI\n\nSistem tidak dapat menghubungi generator kecerdasan buatan. Silakan periksa koneksi Anda.`
+        : `# ⚠️ AI Briefing Connection Interrupted\n\nUnable to establish link with the briefing generator. Please check your connection.`;
+      setBriefingContent(fallback);
+      setShowBriefingModal(true);
+    } finally {
+      setLoadingBriefing(false);
+    }
+  };
+
+  const copyBriefingText = () => {
+    if (briefingContent) {
+      navigator.clipboard.writeText(briefingContent);
+      setCopiedBriefing(true);
+      setTimeout(() => setCopiedBriefing(false), 2000);
+    }
+  };
+
+  // Simple renderer for bold markdowns
+  const renderBoldText = (text: string) => {
+    const parts = text.split(/\*\*([^*]+)\*\*/g);
+    return parts.map((part, index) => {
+      if (index % 2 === 1) {
+        return <strong key={index} className="font-bold text-stone-950 font-sans">{part}</strong>;
+      }
+      return part;
+    });
+  };
+
   // Calculate polygon visual styles dynamically for Climate Risk Years
   const getClimateAreaStyles = (area: ClimateRiskArea) => {
-    // Scaling color and opacity from 2026 to 2050
     const progressionIndex = climateYear === 2026 ? 0.25 : climateYear === 2030 ? 0.45 : climateYear === 2040 ? 0.70 : 0.95;
-    
-    // Risk severity score based on year progress and local growth factor
     const intensity = progressionIndex * area.riskGrowthFactor;
     
     let fillColor = "#10b981"; // emerald for 2026
@@ -350,12 +513,17 @@ export default function MapCanvas({
       fillColor = "#78716c"; // stone-500
     }
 
+    // Dynamic blending layer when Heatmap is active
+    const activeFillOpacity = showHeatmap ? 0.25 : 0.5;
+    const activeStrokeOpacity = showHeatmap ? 0.35 : 0.75;
+
     return {
       radius,
       color,
       fillColor,
-      fillOpacity: isSelected ? 0.75 : 0.5,
+      fillOpacity: isSelected ? 0.75 : activeFillOpacity,
       weight: isSelected ? 2.5 : 1.5,
+      opacity: isSelected ? 0.95 : activeStrokeOpacity,
       className: isSelected ? "marker-active-pulse" : ""
     };
   };
@@ -396,7 +564,7 @@ export default function MapCanvas({
               </span>
               <span className="text-stone-200">|</span>
               <button
-                onClick={fetchEarthquakes}
+                onClick={() => fetchEarthquakes(showTimeTravel ? "week" : "day")}
                 className="text-stone-500 hover:text-stone-800 underline transition-colors"
               >
                 {locale === "id" ? "Coba lagi" : "Retry"}
@@ -417,7 +585,7 @@ export default function MapCanvas({
                 </>
               )}
               <button
-                onClick={fetchEarthquakes}
+                onClick={() => fetchEarthquakes(showTimeTravel ? "week" : "day")}
                 title={locale === "id" ? "Perbarui data" : "Refresh data"}
                 className="ml-0.5 text-stone-400 hover:text-stone-800 transition-colors active:scale-90"
               >
@@ -427,6 +595,7 @@ export default function MapCanvas({
           )}
         </div>
       </div>
+      
       <MapContainer
         center={[-2.5489, 118.0149]} // Centered on Indonesia
         zoom={5}
@@ -539,6 +708,30 @@ export default function MapCanvas({
           </>
         )}
 
+        {/* ============ 🌋 SEISMIC ACTIVITY HEATMAP OVERLAY ============ */}
+        {showHeatmap &&
+          filteredEarthquakes.map((eq) => {
+            const heatRadius = eq.mag * 30000; // scaled in meters
+            const heatColor = eq.mag >= 6.0 
+              ? "#ef4444" // red
+              : eq.mag >= 5.0 
+                ? "#f97316" // orange
+                : "#fbbf24"; // amber/yellow
+            return (
+              <Circle
+                key={`heatmap-${eq.id}`}
+                center={[eq.lat, eq.lng]}
+                radius={heatRadius}
+                pathOptions={{
+                  fillColor: heatColor,
+                  color: "transparent",
+                  fillOpacity: 0.08, // Translucent additive opacity layers
+                  weight: 0
+                }}
+              />
+            );
+          })}
+
         {/* Seismic Activity Markers */}
         {filteredEarthquakes.map((eq) => {
           const markerOpts = getMarkerOptions(eq);
@@ -553,6 +746,18 @@ export default function MapCanvas({
                   radius={(eq.mag * 3.5) + 2}
                   color="#ef4444"
                   fillColor="#ef4444"
+                  weight={1}
+                  className="tsunami-marker-pulse"
+                />
+              )}
+
+              {/* Chronological active wave pulse for Time Travel active point */}
+              {eq.id === latestPlaybackEqId && (
+                <CircleMarker
+                  center={[eq.lat, eq.lng]}
+                  radius={(eq.mag * 5) + 12}
+                  color="#a855f7" // Purple wave
+                  fillColor="#a855f7"
                   weight={1}
                   className="tsunami-marker-pulse"
                 />
@@ -676,6 +881,282 @@ export default function MapCanvas({
         )}
       </MapContainer>
 
+      {/* ⏳ Time Travel Playback Controller — Floating Bottom Center */}
+      {showTimeTravel && chronologicalEarthquakes.length > 0 && (
+        <div className="absolute bottom-6 left-[360px] right-[240px] mx-auto z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-250 p-4 rounded-xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-3.5 font-sans animate-fadeIn">
+          {/* Controls: Play/Pause/Speed */}
+          <div className="flex items-center space-x-3 shrink-0">
+            <button
+              onClick={() => setIsPlaying(!isPlaying)}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all border active:scale-95 shadow-sm ${
+                isPlaying 
+                  ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600" 
+                  : "bg-white hover:bg-stone-100 text-stone-700 border-stone-200"
+              }`}
+              title={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying ? <Pause className="w-4 h-4 fill-current animate-pulse" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+            </button>
+
+            {/* Playback speed pills */}
+            <div className="flex bg-stone-100 p-0.5 rounded-lg border border-stone-200/40 text-[10px] font-mono font-bold">
+              {([1, 2, 5, 10] as const).map((speed) => (
+                <button
+                  key={speed}
+                  onClick={() => setPlaybackSpeed(speed)}
+                  className={`px-1.5 py-0.5 rounded transition-all duration-150 active:scale-95 ${
+                    playbackSpeed === speed
+                      ? "bg-white text-stone-900 shadow-sm border border-stone-200/10 font-bold"
+                      : "text-stone-400 hover:text-stone-700"
+                  }`}
+                >
+                  {speed}x
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Progress Slider */}
+          <div className="flex-1 flex items-center space-x-3 w-full">
+            <input
+              type="range"
+              min={0}
+              max={chronologicalEarthquakes.length - 1}
+              value={playbackIndex}
+              onChange={(e) => {
+                setPlaybackIndex(parseInt(e.target.value));
+                setIsPlaying(false); // Stop playback upon manual seek
+              }}
+              className="flex-1 h-1.5 bg-stone-200 rounded-full appearance-none cursor-pointer accent-stone-900 hover:accent-stone-950 focus:outline-none"
+            />
+          </div>
+
+          {/* Current Event Timestamp Indicator */}
+          <div className="shrink-0 flex flex-col items-end text-right font-mono min-w-[140px] leading-tight">
+            <span className="text-[10px] text-purple-600 font-bold uppercase tracking-wider block mb-0.5 flex items-center gap-1.5">
+              <Clock className="w-3 h-3 text-purple-500 animate-spin-slow" />
+              {isPlaying ? t.playbackActive : t.playbackPaused}
+            </span>
+            <span className="text-xs font-bold text-stone-850">
+              {chronologicalEarthquakes[playbackIndex]
+                ? new Date(chronologicalEarthquakes[playbackIndex].time).toLocaleDateString(locale === "id" ? "id-ID" : "en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric"
+                  })
+                : "..."}
+            </span>
+            <span className="text-[10px] text-stone-400 mt-0.5">
+              {chronologicalEarthquakes[playbackIndex]
+                ? new Date(chronologicalEarthquakes[playbackIndex].time).toLocaleTimeString(locale === "id" ? "id-ID" : "en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  }) + (locale === "id" ? " WIB" : " Local")
+                : "..."}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* 📊 Collapsible Statistics Dashboard Panel — Floating Bottom Left */}
+      {showStatsDashboard && (
+        <div className="absolute bottom-6 left-6 z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 rounded-xl shadow-lg w-[300px] font-sans flex flex-col overflow-hidden animate-fadeIn">
+          {/* Header */}
+          <div 
+            onClick={() => setStatsExpanded(!statsExpanded)}
+            className="p-3.5 border-b border-stone-200/50 flex items-center justify-between cursor-pointer hover:bg-stone-100/50 transition-colors"
+          >
+            <div className="flex items-center space-x-2">
+              <BarChart3 className="w-4 h-4 text-stone-700" />
+              <span className="text-xs font-bold text-stone-900 uppercase tracking-wider font-mono">
+                {t.statsDashboard}
+              </span>
+            </div>
+            <button className="text-stone-400 hover:text-stone-700">
+              {statsExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {/* Collapsible Content */}
+          {statsExpanded && (
+            <div className="p-4 space-y-4 max-h-[340px] overflow-y-auto">
+              {/* Quick Metrics Grid */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono">
+                  <span className="text-[9px] text-stone-400 font-bold block uppercase">{t.totalEvents}</span>
+                  <span className="text-lg font-bold text-stone-900">{statsTotal}</span>
+                </div>
+                <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono relative overflow-hidden">
+                  <span className="text-[9px] text-stone-400 font-bold block uppercase">{t.maxMagnitude}</span>
+                  <span className="text-lg font-bold text-rose-600">M {statsMaxMag > 0 ? statsMaxMag.toFixed(1) : "0.0"}</span>
+                </div>
+                <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono">
+                  <span className="text-[9px] text-stone-400 font-bold block uppercase">{t.avgDepth}</span>
+                  <span className="text-lg font-bold text-stone-850">{statsAvgDepth} km</span>
+                </div>
+                <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono">
+                  <span className="text-[9px] text-stone-400 font-bold block uppercase">{t.tsunamiAlerts}</span>
+                  <span className={`text-lg font-bold ${statsTsunami > 0 ? "text-red-500 animate-pulse font-bold" : "text-stone-500"}`}>
+                    {statsTsunami}
+                  </span>
+                </div>
+              </div>
+
+              {/* Sector Stress Distribution Chart */}
+              <div className="space-y-2 border-t border-stone-200/50 pt-3">
+                <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider font-mono block">
+                  {t.sectorDist}
+                </span>
+                <div className="space-y-2 text-[10px]">
+                  {[
+                    { name: locale === "id" ? "Sektor Sumatra" : "Sumatra Sector", count: sectorSumatra, color: "bg-orange-500" },
+                    { name: locale === "id" ? "Sektor Jawa" : "Java Sector", count: sectorJava, color: "bg-amber-500" },
+                    { name: locale === "id" ? "Sektor Sulawesi" : "Sulawesi Sector", count: sectorSulawesi, color: "bg-rose-500" },
+                    { name: locale === "id" ? "Laut Banda" : "Banda Sea", count: sectorBanda, color: "bg-red-500" },
+                    { name: locale === "id" ? "Sektor Papua" : "Papua Sector", count: sectorPapua, color: "bg-stone-500" },
+                  ].map((sector) => {
+                    const percentage = statsTotal > 0 ? (sector.count / statsTotal) * 100 : 0;
+                    return (
+                      <div key={sector.name} className="space-y-1">
+                        <div className="flex justify-between font-mono text-[9px] font-semibold text-stone-600">
+                          <span>{sector.name}</span>
+                          <span>{sector.count} ({Math.round(percentage)}%)</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-stone-200/60 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full ${sector.color} transition-all duration-500`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sparkling AI Briefing Trigger Button */}
+              <div className="pt-2 border-t border-stone-200/50">
+                <button
+                  onClick={generateAIBriefing}
+                  disabled={loadingBriefing}
+                  className="w-full bg-gradient-to-r from-stone-900 via-stone-850 to-stone-900 text-white hover:from-black hover:to-stone-950 font-sans text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:shadow-lg active:scale-[0.98] transition-all relative overflow-hidden group disabled:opacity-75 disabled:pointer-events-none"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin-slow group-hover:scale-110 transition-transform" />
+                  <span>
+                    {loadingBriefing 
+                      ? (locale === "id" ? "Menganalisis..." : "Analyzing...") 
+                      : t.generateBriefing}
+                  </span>
+                  
+                  {/* Subtle pulsing background glow */}
+                  <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none animate-pulse" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ✨ AI Briefing Report Markdown Modal */}
+      {showBriefingModal && briefingContent && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-stone-950/40 backdrop-blur-sm animate-fadeIn pointer-events-auto">
+          <div className="bg-stone-50 border border-stone-250 rounded-2xl shadow-2xl w-full max-w-[600px] max-h-[85vh] flex flex-col overflow-hidden font-sans relative">
+            
+            {/* Header */}
+            <div className="p-4 border-b border-stone-200 flex items-center justify-between bg-stone-100/50">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-stone-950 flex items-center justify-center text-white shadow-md">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-xs text-stone-950 uppercase tracking-wider font-mono leading-none">
+                    {t.briefingTitle}
+                  </h3>
+                  <p className="text-[9px] text-stone-400 font-mono mt-1">Google Gemini AI Engine</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowBriefingModal(false)}
+                className="p-1.5 rounded-md hover:bg-stone-200/80 text-stone-400 hover:text-stone-800 transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Markdown Area */}
+            <div className="p-6 flex-1 overflow-y-auto font-sans leading-relaxed text-xs md:text-sm text-stone-850 space-y-3">
+              <div className="prose select-text space-y-3">
+                {briefingContent.split("\n").map((line, idx) => {
+                  const trimmed = line.trim();
+                  
+                  if (trimmed.startsWith("# ")) {
+                    return <h1 key={idx} className="text-base font-bold font-serif text-stone-950 border-b border-stone-200 pb-1 mt-4">{trimmed.replace("# ", "")}</h1>;
+                  }
+                  if (trimmed.startsWith("## ")) {
+                    return <h2 key={idx} className="text-xs font-bold font-serif text-stone-950 mt-3.5 flex items-center gap-1">{trimmed.replace("## ", "")}</h2>;
+                  }
+                  if (trimmed.startsWith("### ")) {
+                    return <h3 key={idx} className="text-xs font-bold text-stone-900 mt-3">{trimmed.replace("### ", "")}</h3>;
+                  }
+                  if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+                    const text = trimmed.substring(2);
+                    return (
+                      <li key={idx} className="ml-4 list-disc text-stone-700 py-0.5">
+                        {renderBoldText(text)}
+                      </li>
+                    );
+                  }
+                  if (trimmed.startsWith("> [!")) {
+                    return null;
+                  }
+                  if (line.startsWith("> *") || line.startsWith("> ")) {
+                    return (
+                      <blockquote key={idx} className="border-l-4 border-amber-400 bg-amber-50/50 p-2.5 rounded-r-lg text-[10px] text-amber-900 font-semibold italic my-2 leading-normal">
+                        {renderBoldText(line.replace(/^>\s*\**|\**$/g, ""))}
+                      </blockquote>
+                    );
+                  }
+                  if (trimmed === "---") {
+                    return <hr key={idx} className="border-t border-stone-200/80 my-3" />;
+                  }
+                  if (trimmed.length === 0) return null;
+
+                  return <p key={idx} className="text-stone-600 text-xs leading-relaxed">{renderBoldText(line)}</p>;
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-stone-200 flex items-center justify-end space-x-2.5 bg-stone-100/30">
+              <button
+                onClick={copyBriefingText}
+                className="px-4.5 py-1.5 border border-stone-250 hover:bg-stone-100 text-stone-700 font-bold text-[11px] rounded-lg flex items-center space-x-1.5 transition-all active:scale-95 shadow-sm"
+              >
+                {copiedBriefing ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-emerald-700 font-bold">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy Text</span>
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={() => setShowBriefingModal(false)}
+                className="px-4.5 py-1.5 bg-stone-900 hover:bg-black text-white font-bold text-[11px] rounded-lg transition-all active:scale-95 shadow-sm"
+              >
+                {t.closeBriefing}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* Floating Overlays Container on bottom-right of Map */}
       <div className="absolute bottom-6 right-6 z-[500] pointer-events-none flex flex-col items-end space-y-3">
         {/* Safe Radius Calculator Card */}
@@ -729,7 +1210,7 @@ export default function MapCanvas({
         )}
 
         {/* Legend Overlay */}
-        {(showEarthquakes || showClimateRisk || showTectonicPlates) && (
+        {(showEarthquakes || showClimateRisk || showTectonicPlates || showHeatmap) && (
           <div className="pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-4 rounded-xl shadow-lg text-stone-800 max-w-[210px] flex flex-col space-y-3 font-sans">
             <div className="flex items-center space-x-1.5">
               <Compass className="w-4 h-4 text-stone-500 animate-spin-slow" />
@@ -785,6 +1266,17 @@ export default function MapCanvas({
                     <div className="w-5 h-[1.5px] bg-rose-500 shrink-0" />
                     <span className="text-stone-600 font-medium">{t.faultLines}</span>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Seismic Heatmap Legend */}
+            {showHeatmap && (
+              <div className="space-y-1.5 border-t border-stone-200/50 pt-2.5">
+                <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.heatmapToggle}</span>
+                <div className="flex items-center gap-2 text-[10px]">
+                  <div className="w-4 h-4 rounded bg-rose-600/20 border border-rose-500/10 shrink-0" />
+                  <span className="text-stone-600 font-medium">{locale === "id" ? "Zona Stres Kepadatan" : "Seismic Density Hotspot"}</span>
                 </div>
               </div>
             )}

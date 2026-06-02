@@ -11,7 +11,10 @@ import {
   Clock,
   Compass,
   Layers,
-  Mountain
+  Mountain,
+  Flame,
+  History,
+  BarChart3
 } from "lucide-react";
 import { Locale, translations } from "./translations";
 
@@ -43,6 +46,13 @@ interface ControlSidebarProps {
   setSelectedEarthquake: (eq: MockEarthquake | null) => void;
   showTectonicPlates: boolean;
   setShowTectonicPlates: (show: boolean) => void;
+  // New features
+  showHeatmap: boolean;
+  setShowHeatmap: (show: boolean) => void;
+  showTimeTravel: boolean;
+  setShowTimeTravel: (show: boolean) => void;
+  showStatsDashboard: boolean;
+  setShowStatsDashboard: (show: boolean) => void;
 }
 
 export default function ControlSidebar({
@@ -61,7 +71,13 @@ export default function ControlSidebar({
   selectedEarthquake,
   setSelectedEarthquake,
   showTectonicPlates,
-  setShowTectonicPlates
+  setShowTectonicPlates,
+  showHeatmap,
+  setShowHeatmap,
+  showTimeTravel,
+  setShowTimeTravel,
+  showStatsDashboard,
+  setShowStatsDashboard
 }: ControlSidebarProps) {
   
   const years: (2026 | 2030 | 2040 | 2050)[] = [2026, 2030, 2040, 2050];
@@ -359,6 +375,91 @@ export default function ControlSidebar({
             )}
           </div>
 
+          {/* Divider */}
+          <div className="h-px bg-stone-200/50" />
+
+          {/* Section 4: Advanced Analysis */}
+          <div className="space-y-4">
+            <span className="text-[10px] text-stone-400 uppercase font-mono font-bold tracking-widest block mb-1">
+              {locale === "id" ? "Analisis Tingkat Lanjut" : "Advanced Analysis"}
+            </span>
+
+            {/* Heatmap Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className={`p-1.5 rounded-md transition-colors ${showHeatmap ? "bg-orange-50 text-orange-600" : "bg-stone-100 text-stone-400"}`}>
+                  <Flame className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-sm text-stone-800 font-sans">{t.heatmap}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowHeatmap(!showHeatmap)}
+                className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
+                  showHeatmap ? "bg-stone-900" : "bg-stone-200"
+                }`}
+              >
+                <div
+                  className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 transform ${
+                    showHeatmap ? "translate-x-4.5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Time Travel Playback Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className={`p-1.5 rounded-md transition-colors ${showTimeTravel ? "bg-purple-50 text-purple-600" : "bg-stone-100 text-stone-400"}`}>
+                  <History className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-sm text-stone-800 font-sans">{t.timeTravel}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowTimeTravel(!showTimeTravel)}
+                className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
+                  showTimeTravel ? "bg-stone-900" : "bg-stone-200"
+                }`}
+              >
+                <div
+                  className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 transform ${
+                    showTimeTravel ? "translate-x-4.5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Statistics Dashboard Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className={`p-1.5 rounded-md transition-colors ${showStatsDashboard ? "bg-emerald-50 text-emerald-600" : "bg-stone-100 text-stone-400"}`}>
+                  <BarChart3 className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-sm text-stone-800 font-sans">{t.statsDashboard}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowStatsDashboard(!showStatsDashboard)}
+                className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
+                  showStatsDashboard ? "bg-stone-900" : "bg-stone-200"
+                }`}
+              >
+                <div
+                  className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 transform ${
+                    showStatsDashboard ? "translate-x-4.5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
           {/* Detail Card Space (Condition: Selected Earthquake Details) */}
           {selectedEarthquake && (
             <div className="space-y-4 animate-fadeIn border-t border-stone-200/50 pt-6">
@@ -461,7 +562,7 @@ export default function ControlSidebar({
             <Layers className="w-3.5 h-3.5" />
             <span>{t.mapLayers}</span>
           </div>
-          <span>v1.0.0</span>
+          <span>v1.1.0</span>
         </div>
       </div>
 

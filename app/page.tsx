@@ -40,6 +40,11 @@ export default function Home() {
   const [selectedEarthquake, setSelectedEarthquake] = useState<MockEarthquake | null>(null);
   const [showTectonicPlates, setShowTectonicPlates] = useState<boolean>(false);
 
+  // New Feature States
+  const [showHeatmap, setShowHeatmap] = useState<boolean>(false);
+  const [showTimeTravel, setShowTimeTravel] = useState<boolean>(false);
+  const [showStatsDashboard, setShowStatsDashboard] = useState<boolean>(false);
+
   return (
     <div className="flex w-full h-full overflow-hidden bg-stone-50 relative select-none">
       {/* 1. Claude-style Control Sidebar Panel */}
@@ -60,6 +65,13 @@ export default function Home() {
         setSelectedEarthquake={setSelectedEarthquake}
         showTectonicPlates={showTectonicPlates}
         setShowTectonicPlates={setShowTectonicPlates}
+        // New features
+        showHeatmap={showHeatmap}
+        setShowHeatmap={setShowHeatmap}
+        showTimeTravel={showTimeTravel}
+        setShowTimeTravel={setShowTimeTravel}
+        showStatsDashboard={showStatsDashboard}
+        setShowStatsDashboard={setShowStatsDashboard}
       />
 
       {/* 2. Right Map Canvas Area */}
@@ -74,6 +86,13 @@ export default function Home() {
           selectedEarthquake={selectedEarthquake}
           setSelectedEarthquake={setSelectedEarthquake}
           showTectonicPlates={showTectonicPlates}
+          // New features
+          showHeatmap={showHeatmap}
+          setShowHeatmap={setShowHeatmap}
+          showTimeTravel={showTimeTravel}
+          setShowTimeTravel={setShowTimeTravel}
+          showStatsDashboard={showStatsDashboard}
+          setShowStatsDashboard={setShowStatsDashboard}
         />
       </main>
     </div>

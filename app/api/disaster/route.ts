@@ -1,37 +1,49 @@
 import { NextResponse } from "next/server";
 
-// In-Memory cache state variables (stored outside the GET handler in the global module scope)
-let cachedData: any = null;
-let lastFetchedTime: number = 0;
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
+// In-Memory cache state variables for both Day and Week periods
+let cachedDayData: any = null;
+let lastFetchedDayTime: number = 0;
 
-// Endpoint of official USGS Real-time GeoJSON feed (All Earthquakes in the past 24 hours)
-const USGS_API_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson";
+let cachedWeekData: any = null;
+let lastFetchedWeekTime: number = 0;
 
-export async function GET() {
-  const currentTime = Date.now();
-  const cacheAge = currentTime - lastFetchedTime;
+const CACHE_DURATION_DAY = 10 * 60 * 1000;  // 10 minutes
+const CACHE_DURATION_WEEK = 15 * 60 * 1000; // 15 minutes
 
-  // 1. Check if cache exists and is still valid (less than 10 minutes old)
-  if (cachedData && cacheAge < CACHE_DURATION) {
-    return NextResponse.json(cachedData, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Cache": "HIT",
-        "X-Cache-Age-Seconds": Math.round(cacheAge / 1000).toString(),
-      },
-    });
-  }
+const USGS_DAY_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson";
+const USGS_WEEK_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
 
+export async function GET(request: Request) {
   try {
-    // 2. Cache is expired or empty, fetch fresh data from USGS
-    const response = await fetch(USGS_API_URL, {
+    const { searchParams } = new URL(request.url);
+    const period = searchParams.get("period") || "day";
+    const isWeek = period === "week";
+
+    const currentTime = Date.now();
+    const cacheAge = currentTime - (isWeek ? lastFetchedWeekTime : lastFetchedDayTime);
+    const cacheDuration = isWeek ? CACHE_DURATION_WEEK : CACHE_DURATION_DAY;
+    const activeCache = isWeek ? cachedWeekData : cachedDayData;
+
+    // 1. Check if cache exists and is still valid
+    if (activeCache && cacheAge < cacheDuration) {
+      return NextResponse.json(activeCache, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Cache": "HIT",
+          "X-Cache-Age-Seconds": Math.round(cacheAge / 1000).toString(),
+          "X-Cache-Period": period,
+        },
+      });
+    }
+
+    // 2. Fetch fresh data from USGS
+    const fetchUrl = isWeek ? USGS_WEEK_URL : USGS_DAY_URL;
+    const response = await fetch(fetchUrl, {
       method: "GET",
       headers: {
         "Accept": "application/json",
       },
-      // Ensure Next.js doesn't override our in-memory cache with standard static page cache
       next: { revalidate: 0 },
     });
 
@@ -42,7 +54,6 @@ export async function GET() {
     const rawData = await response.json();
     
     // 3. Data Sanitization & Normalization
-    // Filter and map the heavy USGS GeoJSON down to optimize payload size by up to 70%
     const features = rawData.features || [];
     const normalizedData = features.map((feat: any) => {
       const coordinates = feat.geometry?.coordinates || [0, 0, 0];
@@ -50,46 +61,56 @@ export async function GET() {
       
       return {
         id: feat.id || Math.random().toString(36).substring(2, 9),
-        lat: coordinates[1], // Latitude from geometry
-        lng: coordinates[0], // Longitude from geometry
+        lat: coordinates[1], // Latitude
+        lng: coordinates[0], // Longitude
         mag: properties.mag || 0,
         location: properties.place || "Unknown Location",
-        // Convert timestamp (ms since epoch) to standard human-parseable ISO-8601 string
         time: new Date(properties.time).toISOString(),
         tsunami: properties.tsunami === 1,
-        depth: coordinates[2] || 0 // Include depth which is geometry coordinate[2]
+        depth: coordinates[2] || 0
       };
     });
 
     // 4. Update the global cache variables
-    cachedData = normalizedData;
-    lastFetchedTime = currentTime;
+    if (isWeek) {
+      cachedWeekData = normalizedData;
+      lastFetchedWeekTime = currentTime;
+    } else {
+      cachedDayData = normalizedData;
+      lastFetchedDayTime = currentTime;
+    }
 
     return NextResponse.json(normalizedData, {
       status: 200,
       headers: {
         "Content-Type": "application/json",
         "X-Cache": "MISS",
+        "X-Cache-Period": period,
       },
     });
 
   } catch (error) {
     console.error("USGS API fetch failed:", error);
 
+    const { searchParams } = new URL(request.url);
+    const period = searchParams.get("period") || "day";
+    const isWeek = period === "week";
+    const activeCache = isWeek ? cachedWeekData : cachedDayData;
+
     // 5. Resilient Fallback mechanism
-    // If the USGS API fails but we have expired cached data, fall back to it
-    if (cachedData) {
-      return NextResponse.json(cachedData, {
+    if (activeCache) {
+      return NextResponse.json(activeCache, {
         status: 200,
         headers: {
           "Content-Type": "application/json",
           "X-Cache": "FALLBACK",
+          "X-Cache-Period": period,
           "X-Cache-Fallback-Reason": error instanceof Error ? error.message : "Fetch Failed",
         },
       });
     }
 
-    // 6. Complete failure case (no cache exists at all)
+    // 6. Complete failure case
     return NextResponse.json(
       { 
         error: "Seismic API Unavailable", 

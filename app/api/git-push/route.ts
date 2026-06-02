@@ -6,7 +6,7 @@ export async function GET(): Promise<NextResponse> {
     const cwd = process.cwd();
     execSync('git add -A', { cwd });
     execSync(
-      'git commit -m "feat: add tectonic plate boundaries and active fault line overlay"',
+      'git commit -m "feat: implement seismic heatmap, 7-day playback, stats dashboard, and gemini briefing"',
       { cwd }
     );
     const pushOutput = execSync('git push origin HEAD', { cwd }).toString();
