@@ -75,7 +75,9 @@ export const translations = {
     closeBriefing: "Close Briefing",
     sectorDist: "Regional Sector Distribution",
     magDist: "Magnitude Distribution",
-    activeSectors: "Active Sectors"
+    activeSectors: "Active Sectors",
+    playbackActive: "Playback Active",
+    playbackPaused: "Playback Paused"
   },
   id: {
     subtitle: "Risiko Bencana & Iklim",
@@ -151,6 +153,8 @@ export const translations = {
     closeBriefing: "Tutup Laporan",
     sectorDist: "Distribusi Sektor Wilayah",
     magDist: "Distribusi Magnitudo",
-    activeSectors: "Sektor Aktif"
+    activeSectors: "Sektor Aktif",
+    playbackActive: "Pemutaran Aktif",
+    playbackPaused: "Pemutaran Jeda"
   }
 };
