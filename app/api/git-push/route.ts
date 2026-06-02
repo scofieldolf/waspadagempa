@@ -6,7 +6,7 @@ export async function GET(): Promise<NextResponse> {
     const cwd = process.cwd();
     execSync('git add -A', { cwd });
     execSync(
-      'git commit -m "feat: integrate GPS locate pin, Depth coloring, Sidebar compact event list feed, BMKG official Indonesian proxy feed switcher, and top-right Toast Alerts"',
+      'git commit -m "fix: resolve vertical timestamp layout clipping and adjust playback positioning inside MapCanvas"',
       { cwd }
     );
     const pushOutput = execSync('git push origin HEAD', { cwd }).toString();

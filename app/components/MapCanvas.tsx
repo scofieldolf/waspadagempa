@@ -970,12 +970,12 @@ export default function MapCanvas({
 
       {/* ⏳ Time Travel Playback Controller — Floating Bottom Center */}
       {showTimeTravel && chronologicalEarthquakes.length > 0 && (
-        <div className="absolute bottom-6 left-[360px] right-[240px] mx-auto z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-250 p-4 rounded-xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-3.5 font-sans animate-fadeIn">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-250 py-3 px-4 rounded-xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 font-sans animate-fadeIn w-[90%] max-w-[560px]">
           {/* Controls: Play/Pause/Speed */}
           <div className="flex items-center space-x-3 shrink-0">
             <button
               onClick={() => setIsPlaying(!isPlaying)}
-              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all border active:scale-95 shadow-sm ${
+              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all border active:scale-95 shadow-sm cursor-pointer ${
                 isPlaying 
                   ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600" 
                   : "bg-white hover:bg-stone-100 text-stone-700 border-stone-200"
@@ -991,7 +991,7 @@ export default function MapCanvas({
                 <button
                   key={speed}
                   onClick={() => setPlaybackSpeed(speed)}
-                  className={`px-1.5 py-0.5 rounded transition-all duration-150 active:scale-95 ${
+                  className={`px-1.5 py-0.5 rounded transition-all duration-150 active:scale-95 cursor-pointer ${
                     playbackSpeed === speed
                       ? "bg-white text-stone-900 shadow-sm border border-stone-200/10 font-bold"
                       : "text-stone-400 hover:text-stone-700"
@@ -1019,12 +1019,12 @@ export default function MapCanvas({
           </div>
 
           {/* Current Event Timestamp Indicator */}
-          <div className="shrink-0 flex flex-col items-end text-right font-mono min-w-[140px] leading-tight">
-            <span className="text-[10px] text-purple-600 font-bold uppercase tracking-wider block mb-0.5 flex items-center gap-1.5">
+          <div className="shrink-0 flex flex-col items-end text-right font-mono min-w-[130px] justify-center leading-none">
+            <span className="text-[9px] text-purple-600 font-bold uppercase tracking-wider flex items-center gap-1 mb-1 justify-end leading-none">
               <Clock className="w-3 h-3 text-purple-500 animate-spin-slow" />
               {isPlaying ? t.playbackActive : t.playbackPaused}
             </span>
-            <span className="text-xs font-bold text-stone-850">
+            <span className="text-xs font-bold text-stone-850 leading-tight">
               {chronologicalEarthquakes[playbackIndex]
                 ? new Date(chronologicalEarthquakes[playbackIndex].time).toLocaleDateString(locale === "id" ? "id-ID" : "en-US", {
                     weekday: "short",
@@ -1033,7 +1033,7 @@ export default function MapCanvas({
                   })
                 : "..."}
             </span>
-            <span className="text-[10px] text-stone-400 mt-0.5">
+            <span className="text-[9px] text-stone-400 mt-1 leading-none">
               {chronologicalEarthquakes[playbackIndex]
                 ? new Date(chronologicalEarthquakes[playbackIndex].time).toLocaleTimeString(locale === "id" ? "id-ID" : "en-US", {
                     hour: "2-digit",
