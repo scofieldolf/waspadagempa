@@ -414,44 +414,46 @@ export default function MapCanvas({
       </MapContainer>
 
       {/* Floating Scale & Legend Overlay on bottom-right of Map */}
-      <div className="absolute bottom-6 right-6 z-25 bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-4 rounded-xl shadow-lg text-stone-800 pointer-events-auto max-w-[210px] flex flex-col space-y-3 font-sans">
-        <div className="flex items-center space-x-1.5">
-          <Compass className="w-4 h-4 text-stone-500 animate-spin-slow" />
-          <span className="text-[11px] font-bold text-stone-900 uppercase tracking-wider font-mono">{t.legend}</span>
-        </div>
-        
-        {/* Earthquake Legend */}
-        {showEarthquakes && (
-          <div className="space-y-1.5">
-            <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.magnitude}</span>
-            <div className="flex flex-col gap-1 text-[10px]">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-rose-400 border border-rose-600" />
-                <span className="text-stone-600 font-medium">{locale === "id" ? "Parah (Mag 6.0+)" : "Mag 6.0+ (Severe)"}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-amber-600" />
-                <span className="text-stone-600 font-medium">{locale === "id" ? "Sedang (Mag 5.0+)" : "Mag 5.0+ (Moderate)"}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-stone-500 border border-stone-600" />
-                <span className="text-stone-600 font-medium">{locale === "id" ? "Ringan (Mag < 5.0)" : "Mag < 5.0 (Minor)"}</span>
+      {(showEarthquakes || showClimateRisk) && (
+        <div className="absolute bottom-6 right-6 z-[500] bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-4 rounded-xl shadow-lg text-stone-800 pointer-events-auto max-w-[210px] flex flex-col space-y-3 font-sans">
+          <div className="flex items-center space-x-1.5">
+            <Compass className="w-4 h-4 text-stone-500 animate-spin-slow" />
+            <span className="text-[11px] font-bold text-stone-900 uppercase tracking-wider font-mono">{t.legend}</span>
+          </div>
+          
+          {/* Earthquake Legend */}
+          {showEarthquakes && (
+            <div className="space-y-1.5">
+              <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.magnitude}</span>
+              <div className="flex flex-col gap-1 text-[10px]">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-rose-400 border border-rose-600" />
+                  <span className="text-stone-600 font-medium">{locale === "id" ? "Parah (Mag 6.0+)" : "Mag 6.0+ (Severe)"}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-amber-600" />
+                  <span className="text-stone-600 font-medium">{locale === "id" ? "Sedang (Mag 5.0+)" : "Mag 5.0+ (Moderate)"}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-stone-500 border border-stone-600" />
+                  <span className="text-stone-600 font-medium">{locale === "id" ? "Ringan (Mag < 5.0)" : "Mag < 5.0 (Minor)"}</span>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Climate Risk Legend */}
-        {showClimateRisk && (
-          <div className="space-y-1.5 border-t border-stone-200/50 pt-2.5">
-            <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.climateRiskLegend}</span>
-            <div className="flex items-center gap-1.5 text-[10px]">
-              <div className="flex-1 h-2 rounded bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 border border-stone-200/30" />
-              <span className="text-stone-500 font-mono font-bold uppercase">{climateYear}</span>
+          {/* Climate Risk Legend */}
+          {showClimateRisk && (
+            <div className="space-y-1.5 border-t border-stone-200/50 pt-2.5">
+              <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.climateRiskLegend}</span>
+              <div className="flex items-center gap-1.5 text-[10px]">
+                <div className="flex-1 h-2 rounded bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 border border-stone-200/30" />
+                <span className="text-stone-500 font-mono font-bold uppercase">{climateYear}</span>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
