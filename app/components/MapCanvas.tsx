@@ -223,7 +223,10 @@ export default function MapCanvas({
     let color = "#78716c"; // stone
     let fillColor = "#a8a29e";
     
-    if (mag >= 6.0) {
+    if (eq.tsunami) {
+      color = "#ef4444"; // glowing crimson red for tsunami threat
+      fillColor = "#f87171"; // soft red fill
+    } else if (mag >= 6.0) {
       color = "#dc2626"; // rose-600
       fillColor = "#f87171"; // red-400
     } else if (mag >= 5.0) {
@@ -306,85 +309,106 @@ export default function MapCanvas({
           const isSelected = selectedEarthquake?.id === eq.id;
           
           return (
-            <CircleMarker
-              key={eq.id}
-              center={[eq.lat, eq.lng]}
-              {...markerOpts}
-              eventHandlers={{
-                click: () => {
-                  setSelectedEarthquake(eq);
-                }
-              }}
-            >
-              <Popup closeButton={false}>
-                {/* Premium unbordered Popup inside map */}
-                <div className="p-3.5 max-w-[260px] space-y-3 bg-stone-50 text-stone-900 font-sans">
-                  {/* Magnitude indicator line */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider font-mono">
-                      {eq.location.includes("Sumatra") 
-                        ? (locale === "id" ? "Sektor Sumatra" : "Sumatra Sector") 
-                        : eq.location.includes("Java") 
-                          ? (locale === "id" ? "Sektor Jawa" : "Java Sector")
-                          : eq.location.includes("Sulawesi")
-                            ? (locale === "id" ? "Sektor Sulawesi" : "Sulawesi Sector")
-                            : eq.location.includes("Banda Sea")
-                              ? (locale === "id" ? "Laut Banda" : "Banda Sea")
-                              : (locale === "id" ? "Sektor Papua" : "Papua Sector")}
-                    </span>
-                    <div className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold text-white ${
-                      eq.mag >= 6 
-                        ? "bg-rose-600" 
-                        : eq.mag >= 5 
-                          ? "bg-amber-600" 
-                          : "bg-stone-600"
-                    }`}>
-                      M {eq.mag.toFixed(1)}
-                    </div>
-                  </div>
+            <React.Fragment key={eq.id}>
+              {/* Tsunami Outer Rippling Circle Marker Overlay */}
+              {eq.tsunami && (
+                <CircleMarker
+                  center={[eq.lat, eq.lng]}
+                  radius={(eq.mag * 3.5) + 2}
+                  color="#ef4444"
+                  fillColor="#ef4444"
+                  weight={1}
+                  className="tsunami-marker-pulse"
+                />
+              )}
 
-                  {/* Epicenter Title */}
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-bold font-serif text-stone-950 leading-tight">
-                      {eq.location}
-                    </h4>
-                    <p className="text-[10px] text-stone-500 flex items-center gap-1 font-mono">
-                      <Clock className="w-3 h-3 text-stone-400" />
-                      {new Date(eq.time).toLocaleTimeString(locale === "id" ? "id-ID" : "en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit"
-                      })} {locale === "id" ? "WIB" : "Local"}
-                    </p>
-                  </div>
+              <CircleMarker
+                center={[eq.lat, eq.lng]}
+                {...markerOpts}
+                eventHandlers={{
+                  click: () => {
+                    setSelectedEarthquake(eq);
+                  }
+                }}
+              >
+                <Popup closeButton={false}>
+                  {/* Premium unbordered Popup inside map */}
+                  <div className="p-3.5 max-w-[260px] space-y-3 bg-stone-50 text-stone-900 font-sans">
+                    {/* Tsunami Minimalist Alert Badge */}
+                    {eq.tsunami && (
+                      <div className="bg-red-50 border border-red-200/50 rounded-lg p-2 flex items-center space-x-1.5 text-[9px] text-red-700 font-bold uppercase tracking-wider animate-pulse leading-none">
+                        <Waves className="w-3.5 h-3.5 text-red-600 flex-shrink-0 animate-bounce" />
+                        <span>{locale === "id" ? "Potensi Tsunami / Tsunami Alert" : "Tsunami Alert Generated"}</span>
+                      </div>
+                    )}
 
-                  {/* Details Quick Specs */}
-                  <div className="grid grid-cols-2 gap-2 text-[11px] bg-stone-100/50 p-2 rounded-lg border border-stone-200/20 font-mono">
-                    <div>
-                      <span className="text-stone-400 block text-[9px] uppercase font-bold">{t.depth}</span>
-                      <span className="font-bold text-stone-700">{eq.depth} km</span>
-                    </div>
-                    <div>
-                      <span className="text-stone-400 block text-[9px] uppercase font-bold">{t.tsunami}</span>
-                      <span className={`font-bold ${eq.tsunami ? "text-blue-500 font-bold" : "text-stone-500"}`}>
-                        {eq.tsunami ? (locale === "id" ? "Peringatan" : "Warning") : t.none}
+                    {/* Magnitude indicator line */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider font-mono">
+                        {eq.location.includes("Sumatra") 
+                          ? (locale === "id" ? "Sektor Sumatra" : "Sumatra Sector") 
+                          : eq.location.includes("Java") 
+                            ? (locale === "id" ? "Sektor Jawa" : "Java Sector")
+                            : eq.location.includes("Sulawesi")
+                              ? (locale === "id" ? "Sektor Sulawesi" : "Sulawesi Sector")
+                              : eq.location.includes("Banda Sea")
+                                ? (locale === "id" ? "Laut Banda" : "Banda Sea")
+                                : (locale === "id" ? "Sektor Papua" : "Papua Sector")}
                       </span>
+                      <div className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold text-white ${
+                        eq.mag >= 6 
+                          ? "bg-rose-600" 
+                          : eq.mag >= 5 
+                            ? "bg-amber-600" 
+                            : "bg-stone-600"
+                      }`}>
+                        M {eq.mag.toFixed(1)}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Details Card Activator */}
-                  <button
-                    onClick={() => setSelectedEarthquake(eq)}
-                    className={`w-full py-1.5 text-center text-xs font-semibold rounded-md border transition-all duration-200 shadow-sm ${
-                      isSelected
-                        ? "bg-stone-950 text-white border-stone-950"
-                        : "bg-white text-stone-700 border-stone-200 hover:bg-stone-100 hover:text-stone-950"
-                    }`}
-                  >
-                    {isSelected ? t.activeFocus : t.focusDetails}
-                  </button>
-                </div>
-              </Popup>
-            </CircleMarker>
+                    {/* Epicenter Title */}
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold font-serif text-stone-950 leading-tight">
+                        {eq.location}
+                      </h4>
+                      <p className="text-[10px] text-stone-500 flex items-center gap-1 font-mono">
+                        <Clock className="w-3 h-3 text-stone-400" />
+                        {new Date(eq.time).toLocaleTimeString(locale === "id" ? "id-ID" : "en-US", {
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })} {locale === "id" ? "WIB" : "Local"}
+                      </p>
+                    </div>
+
+                    {/* Details Quick Specs */}
+                    <div className="grid grid-cols-2 gap-2 text-[11px] bg-stone-100/50 p-2 rounded-lg border border-stone-200/20 font-mono">
+                      <div>
+                        <span className="text-stone-400 block text-[9px] uppercase font-bold">{t.depth}</span>
+                        <span className="font-bold text-stone-700">{eq.depth} km</span>
+                      </div>
+                      <div>
+                        <span className="text-stone-400 block text-[9px] uppercase font-bold">{t.tsunami}</span>
+                        <span className={`font-bold ${eq.tsunami ? "text-blue-500 font-bold" : "text-stone-500"}`}>
+                          {eq.tsunami ? (locale === "id" ? "Peringatan" : "Warning") : t.none}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Details Card Activator */}
+                    <button
+                      onClick={() => setSelectedEarthquake(eq)}
+                      className={`w-full py-1.5 text-center text-xs font-semibold rounded-md border transition-all duration-200 shadow-sm ${
+                        isSelected
+                          ? "bg-stone-950 text-white border-stone-950"
+                          : "bg-white text-stone-700 border-stone-200 hover:bg-stone-100 hover:text-stone-950"
+                      }`}
+                    >
+                      {isSelected ? t.activeFocus : t.focusDetails}
+                    </button>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            </React.Fragment>
           );
         })}
       </MapContainer>
