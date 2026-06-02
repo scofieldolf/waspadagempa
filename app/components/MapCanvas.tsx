@@ -446,6 +446,17 @@ export default function MapCanvas({
 
   const activeNearestEarthquake = nearestEarthquake;
 
+  // Dynamic position classes for Playback Controller to prevent overlap on both mobile and desktop
+  const playbackPositionClass = useMemo(() => {
+    if (!showStatsDashboard) {
+      return "bottom-6 left-4 right-4 md:left-6 md:right-auto md:w-[300px]";
+    }
+    // On mobile: always at bottom-20 (above collapsed stats dashboard at bottom-6)
+    // On desktop: stack above stats dashboard depending on whether it is expanded
+    const desktopBottom = statsExpanded ? "md:bottom-[440px]" : "md:bottom-24";
+    return `bottom-20 ${desktopBottom} left-4 right-4 md:left-6 md:right-auto md:translate-x-0 md:w-[300px]`;
+  }, [showStatsDashboard, statsExpanded]);
+
   // Calculate statistics metrics dynamically
   const statsTotal = filteredEarthquakes.length;
   let statsMaxMag = 0;
@@ -1005,43 +1016,61 @@ export default function MapCanvas({
         )}
       </MapContainer>
 
-      {/* ⏳ Time Travel Playback Controller — Floating Bottom Center */}
+      {/* ⏳ Time Travel Playback Controller — Floating Bottom Left (Stacked above Stats Dashboard) */}
       {showTimeTravel && chronologicalEarthquakes.length > 0 && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-250 py-3 px-4 rounded-xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 font-sans animate-fadeIn w-[90%] max-w-[560px]">
-          {/* Controls: Play/Pause/Speed */}
-          <div className="flex items-center space-x-3 shrink-0">
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all border active:scale-95 shadow-sm cursor-pointer ${
-                isPlaying 
-                  ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600" 
-                  : "bg-white hover:bg-stone-100 text-stone-700 border-stone-200"
-              }`}
-              title={isPlaying ? "Pause" : "Play"}
-            >
-              {isPlaying ? <Pause className="w-4 h-4 fill-current animate-pulse" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
-            </button>
+        <div className={`absolute ${playbackPositionClass} z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-250 py-3 px-4 rounded-xl shadow-lg flex flex-col gap-3 font-sans animate-fadeIn`}>
+          {/* Controls: Play/Pause/Speed & Current Time */}
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center space-x-2 shrink-0">
+              <button
+                onClick={() => setIsPlaying(!isPlaying)}
+                className={`w-8.5 h-8.5 rounded-lg flex items-center justify-center transition-all border active:scale-95 shadow-sm cursor-pointer ${
+                  isPlaying 
+                    ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600" 
+                    : "bg-white hover:bg-stone-100 text-stone-700 border-stone-200"
+                }`}
+                title={isPlaying ? "Pause" : "Play"}
+              >
+                {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current animate-pulse" /> : <Play className="w-3.5 h-3.5 fill-current ml-0.5" />}
+              </button>
 
-            {/* Playback speed pills */}
-            <div className="flex bg-stone-100 p-0.5 rounded-lg border border-stone-200/40 text-[10px] font-mono font-bold">
-              {([1, 2, 5, 10] as const).map((speed) => (
-                <button
-                  key={speed}
-                  onClick={() => setPlaybackSpeed(speed)}
-                  className={`px-1.5 py-0.5 rounded transition-all duration-150 active:scale-95 cursor-pointer ${
-                    playbackSpeed === speed
-                      ? "bg-white text-stone-900 shadow-sm border border-stone-200/10 font-bold"
-                      : "text-stone-400 hover:text-stone-700"
-                  }`}
-                >
-                  {speed}x
-                </button>
-              ))}
+              {/* Playback speed pills */}
+              <div className="flex bg-stone-100 p-0.5 rounded-lg border border-stone-200/40 text-[9px] font-mono font-bold">
+                {([1, 2, 5, 10] as const).map((speed) => (
+                  <button
+                    key={speed}
+                    onClick={() => setPlaybackSpeed(speed)}
+                    className={`px-1.5 py-0.5 rounded transition-all duration-150 active:scale-95 cursor-pointer ${
+                      playbackSpeed === speed
+                        ? "bg-white text-stone-900 shadow-sm border border-stone-200/10 font-bold"
+                        : "text-stone-400 hover:text-stone-700"
+                    }`}
+                  >
+                    {speed}x
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Current Event Timestamp Indicator */}
+            <div className="flex flex-col items-end text-right font-mono justify-center leading-none">
+              <span className="text-[8px] text-purple-600 font-bold uppercase tracking-wider flex items-center gap-0.5 mb-0.5 justify-end">
+                <Clock className="w-2.5 h-2.5 text-purple-500 animate-spin-slow" />
+                {isPlaying ? t.playbackActive : t.playbackPaused}
+              </span>
+              <span className="text-[10px] font-bold text-stone-850">
+                {chronologicalEarthquakes[playbackIndex]
+                  ? new Date(chronologicalEarthquakes[playbackIndex].time).toLocaleDateString(locale === "id" ? "id-ID" : "en-US", {
+                      month: "short",
+                      day: "numeric"
+                    })
+                  : "..."}
+              </span>
             </div>
           </div>
 
           {/* Progress Slider */}
-          <div className="flex-1 flex items-center space-x-3 w-full">
+          <div className="w-full flex items-center space-x-2.5">
             <input
               type="range"
               min={0}
@@ -1051,26 +1080,17 @@ export default function MapCanvas({
                 setPlaybackIndex(parseInt(e.target.value));
                 setIsPlaying(false); // Stop playback upon manual seek
               }}
-              className="flex-1 h-1.5 bg-stone-200 rounded-full appearance-none cursor-pointer accent-stone-900 hover:accent-stone-950 focus:outline-none"
+              className="flex-1 h-1 bg-stone-200 rounded-full appearance-none cursor-pointer accent-stone-900 hover:accent-stone-950 focus:outline-none"
             />
+            <span className="text-[9px] text-stone-400 font-mono shrink-0">
+              {playbackIndex + 1}/{chronologicalEarthquakes.length}
+            </span>
           </div>
 
-          {/* Current Event Timestamp Indicator */}
-          <div className="shrink-0 flex flex-col items-end text-right font-mono min-w-[130px] justify-center leading-none">
-            <span className="text-[9px] text-purple-600 font-bold uppercase tracking-wider flex items-center gap-1 mb-1 justify-end leading-none">
-              <Clock className="w-3 h-3 text-purple-500 animate-spin-slow" />
-              {isPlaying ? t.playbackActive : t.playbackPaused}
-            </span>
-            <span className="text-xs font-bold text-stone-850 leading-tight">
-              {chronologicalEarthquakes[playbackIndex]
-                ? new Date(chronologicalEarthquakes[playbackIndex].time).toLocaleDateString(locale === "id" ? "id-ID" : "en-US", {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric"
-                  })
-                : "..."}
-            </span>
-            <span className="text-[9px] text-stone-400 mt-1 leading-none">
+          {/* Detailed Hour/Time line at the bottom */}
+          <div className="text-[9px] text-stone-400 font-mono border-t border-stone-200/50 pt-1.5 flex justify-between w-full">
+            <span>{locale === "id" ? "Waktu Kejadian:" : "Event Time:"}</span>
+            <span className="font-bold text-stone-600">
               {chronologicalEarthquakes[playbackIndex]
                 ? new Date(chronologicalEarthquakes[playbackIndex].time).toLocaleTimeString(locale === "id" ? "id-ID" : "en-US", {
                     hour: "2-digit",
@@ -1281,9 +1301,9 @@ export default function MapCanvas({
         </div>
       )}
 
-      {/* 🔔 Floating top-right Absolute Toast Notifications Overlay */}
+      {/* 🔔 Floating top-center Absolute Toast Notifications Overlay */}
       {toastAlert && (
-        <div className="absolute top-4 right-4 z-[9999] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-red-200 p-4 rounded-xl shadow-xl w-[280px] font-sans flex flex-col space-y-2.5 animate-fadeIn border-l-4 border-l-red-500">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-red-200 p-4 rounded-xl shadow-xl w-[280px] font-sans flex flex-col space-y-2.5 animate-fadeIn border-l-4 border-l-red-500">
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 rounded-full bg-red-600 animate-ping shrink-0" />
@@ -1380,9 +1400,9 @@ export default function MapCanvas({
 
         </div>
 
-      {/* Legend Overlay — Floating Top-Right on Mobile to avoid overlapping Stats Dashboard, Bottom-Right on Desktop */}
+      {/* Legend Overlay — Floating Top-Right on both Mobile and Desktop to avoid overlapping other panels */}
       {(showEarthquakes || showClimateRisk || showTectonicPlates || showHeatmap) && (
-        <div className="absolute top-28 right-4 md:top-auto md:bottom-6 md:right-6 z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-3.5 rounded-xl shadow-lg text-stone-800 w-[180px] md:w-[210px] flex flex-col space-y-3 font-sans animate-fadeIn">
+        <div className="absolute top-4 right-4 md:top-6 md:right-6 z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-3.5 rounded-xl shadow-lg text-stone-800 w-[180px] md:w-[210px] flex flex-col space-y-3 font-sans animate-fadeIn">
           {/* Legend Title / Collapsible Toggle */}
           <div 
             onClick={() => setLegendExpanded(!legendExpanded)}
