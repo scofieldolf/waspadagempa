@@ -73,6 +73,84 @@ const CLIMATE_RISK_AREAS: ClimateRiskArea[] = [
   }
 ];
 
+// ============================================================
+// TECTONIC PLATES & ACTIVE FAULT LINE COORDINATE DATA
+// Sources: USGS Hazard Map, BMKG, and published geological surveys
+// ============================================================
+
+// Major Plate Boundary Lines (orange dashed — subduction / convergent)
+const PLATE_BOUNDARIES: { name: string; coords: [number, number][]; color: string }[] = [
+  {
+    name: "Sunda Trench (Java Trench)",
+    color: "#f97316", // orange-500
+    coords: [
+      [6.5, 93.5], [4.0, 94.5], [2.0, 95.5], [0.0, 96.0],
+      [-2.0, 97.5], [-4.5, 100.5], [-6.5, 103.5],
+      [-8.0, 107.0], [-9.0, 110.5], [-10.0, 113.5],
+      [-10.5, 116.5], [-10.5, 119.5], [-10.0, 122.0],
+      [-9.5, 124.5], [-9.0, 127.0], [-9.0, 129.0],
+      [-8.5, 131.5]
+    ]
+  },
+  {
+    name: "Banda Arc",
+    color: "#fb923c", // orange-400
+    coords: [
+      [-6.5, 124.0], [-7.0, 126.0], [-7.5, 128.0],
+      [-7.0, 130.5], [-6.0, 132.5], [-5.0, 133.5],
+      [-4.0, 134.0], [-3.0, 134.5], [-2.0, 135.0]
+    ]
+  },
+  {
+    name: "Philippine Trench",
+    color: "#fdba74", // orange-300
+    coords: [
+      [16.0, 127.0], [14.0, 127.5], [11.5, 127.0],
+      [9.0, 126.5], [7.0, 126.5], [5.0, 126.5],
+      [3.0, 127.0], [1.5, 127.5]
+    ]
+  }
+];
+
+// Active Fault Lines (rose/red — strike-slip & thrust faults)
+const ACTIVE_FAULTS: { name: string; coords: [number, number][]; color: string; dashArray?: string }[] = [
+  {
+    name: "Great Sumatran Fault (Semangko)",
+    color: "#f43f5e", // rose-500
+    coords: [
+      [5.8, 95.8], [4.5, 96.5], [3.0, 97.5], [1.5, 98.8],
+      [0.0, 100.0], [-1.5, 101.2], [-3.0, 102.5],
+      [-4.5, 103.8], [-5.8, 105.2]
+    ]
+  },
+  {
+    name: "Palu-Koro Fault",
+    color: "#e11d48", // rose-600
+    coords: [
+      [0.5, 120.0], [0.0, 120.1], [-0.5, 120.2],
+      [-1.0, 120.3], [-1.5, 120.6], [-2.0, 121.0],
+      [-2.5, 121.5], [-3.0, 122.0]
+    ]
+  },
+  {
+    name: "Flores Thrust Fault",
+    color: "#be123c", // rose-700
+    dashArray: "6 4",
+    coords: [
+      [-7.5, 114.0], [-7.8, 116.0], [-8.0, 118.0],
+      [-8.2, 120.0], [-8.3, 122.0], [-8.0, 124.0]
+    ]
+  },
+  {
+    name: "Sorong Fault",
+    color: "#fb7185", // rose-400
+    coords: [
+      [-1.8, 130.0], [-1.3, 132.5], [-0.8, 135.0],
+      [-0.3, 137.0], [0.2, 139.0], [0.5, 141.0]
+    ]
+  }
+];
+
 interface MapCanvasProps {
   locale: Locale;
   sidebarCollapsed: boolean;
@@ -82,6 +160,7 @@ interface MapCanvasProps {
   climateYear: 2026 | 2030 | 2040 | 2050;
   selectedEarthquake: MockEarthquake | null;
   setSelectedEarthquake: (eq: MockEarthquake | null) => void;
+  showTectonicPlates: boolean;
 }
 
 // Component to handle map centering when selected earthquake changes
@@ -132,7 +211,8 @@ export default function MapCanvas({
   showClimateRisk,
   climateYear,
   selectedEarthquake,
-  setSelectedEarthquake
+  setSelectedEarthquake,
+  showTectonicPlates
 }: MapCanvasProps) {
   
   const t = translations[locale];
@@ -408,6 +488,57 @@ export default function MapCanvas({
             );
           })}
 
+        {/* ============ TECTONIC PLATES & FAULT LINES OVERLAY ============ */}
+        {showTectonicPlates && (
+          <>
+            {/* Plate Boundary Lines — dashed orange */}
+            {PLATE_BOUNDARIES.map((boundary) => (
+              <Polyline
+                key={boundary.name}
+                positions={boundary.coords as [number, number][]}
+                color={boundary.color}
+                weight={2.5}
+                opacity={0.75}
+                dashArray="10 6"
+              >
+                <Popup>
+                  <div className="p-3 min-w-[180px]">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <div className="w-3 h-[2px] rounded" style={{ backgroundColor: boundary.color }} />
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-orange-600">Plate Boundary</span>
+                    </div>
+                    <p className="font-semibold text-sm text-stone-900">{boundary.name}</p>
+                    <p className="text-[10px] text-stone-500 mt-1">Subduction / convergent tectonic boundary</p>
+                  </div>
+                </Popup>
+              </Polyline>
+            ))}
+
+            {/* Active Fault Lines — solid/dashed rose */}
+            {ACTIVE_FAULTS.map((fault) => (
+              <Polyline
+                key={fault.name}
+                positions={fault.coords as [number, number][]}
+                color={fault.color}
+                weight={2}
+                opacity={0.85}
+                dashArray={fault.dashArray}
+              >
+                <Popup>
+                  <div className="p-3 min-w-[180px]">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <div className="w-3 h-[1.5px] rounded" style={{ backgroundColor: fault.color }} />
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-rose-600">Active Fault</span>
+                    </div>
+                    <p className="font-semibold text-sm text-stone-900">{fault.name}</p>
+                    <p className="text-[10px] text-stone-500 mt-1">High seismic hazard zone — click for details</p>
+                  </div>
+                </Popup>
+              </Polyline>
+            ))}
+          </>
+        )}
+
         {/* Seismic Activity Markers */}
         {filteredEarthquakes.map((eq) => {
           const markerOpts = getMarkerOptions(eq);
@@ -598,7 +729,7 @@ export default function MapCanvas({
         )}
 
         {/* Legend Overlay */}
-        {(showEarthquakes || showClimateRisk) && (
+        {(showEarthquakes || showClimateRisk || showTectonicPlates) && (
           <div className="pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-4 rounded-xl shadow-lg text-stone-800 max-w-[210px] flex flex-col space-y-3 font-sans">
             <div className="flex items-center space-x-1.5">
               <Compass className="w-4 h-4 text-stone-500 animate-spin-slow" />
@@ -633,6 +764,27 @@ export default function MapCanvas({
                 <div className="flex items-center gap-1.5 text-[10px]">
                   <div className="flex-1 h-2 rounded bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 border border-stone-200/30" />
                   <span className="text-stone-500 font-mono font-bold uppercase">{climateYear}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Tectonic Plates Legend */}
+            {showTectonicPlates && (
+              <div className="space-y-1.5 border-t border-stone-200/50 pt-2.5">
+                <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">{t.tectonicPlates}</span>
+                <div className="flex flex-col gap-1.5 text-[10px]">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <div className="w-2.5 h-[2px] bg-orange-500" />
+                      <div className="w-1 h-[2px] bg-orange-500 opacity-40" />
+                      <div className="w-1.5 h-[2px] bg-orange-500" />
+                    </div>
+                    <span className="text-stone-600 font-medium">{t.plateBoundary}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-[1.5px] bg-rose-500 shrink-0" />
+                    <span className="text-stone-600 font-medium">{t.faultLines}</span>
+                  </div>
                 </div>
               </div>
             )}

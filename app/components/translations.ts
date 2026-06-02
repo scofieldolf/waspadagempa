@@ -43,7 +43,17 @@ export const translations = {
     distanceToNearest: "Distance to nearest epicenter:",
     statusWaspada: "Warning - Vibration Impact",
     statusAman: "Safe",
-    clearDistance: "Clear Location"
+    clearDistance: "Clear Location",
+    tectonicPlates: "Tectonic Plates & Fault Lines",
+    tectonicDesc: "Major plate boundaries and active fault zones in Indonesia",
+    plateBoundary: "Plate Boundary",
+    faultLines: "Active Fault Lines",
+    sundaTrench: "Sunda Trench",
+    sumatraFault: "Great Sumatran Fault",
+    paluFault: "Palu-Koro Fault",
+    floresThrust: "Flores Thrust",
+    sorong: "Sorong Fault",
+    bandaArc: "Banda Arc"
   },
   id: {
     subtitle: "Risiko Bencana & Iklim",
@@ -87,6 +97,16 @@ export const translations = {
     distanceToNearest: "Jarak ke pusat gempa terdekat:",
     statusWaspada: "Waspada - Dampak Getaran",
     statusAman: "Aman",
-    clearDistance: "Hapus Lokasi"
+    clearDistance: "Hapus Lokasi",
+    tectonicPlates: "Lempeng Tektonik & Sesar Aktif",
+    tectonicDesc: "Batas lempeng utama dan zona sesar aktif di Indonesia",
+    plateBoundary: "Batas Lempeng",
+    faultLines: "Sesar Aktif",
+    sundaTrench: "Palung Sunda",
+    sumatraFault: "Sesar Semangko (Sumatra)",
+    paluFault: "Sesar Palu-Koro",
+    floresThrust: "Sesar Naik Flores",
+    sorong: "Sesar Sorong",
+    bandaArc: "Busur Banda"
   }
 };

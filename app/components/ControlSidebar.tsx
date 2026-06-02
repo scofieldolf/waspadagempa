@@ -10,7 +10,8 @@ import {
   MapPin,
   Clock,
   Compass,
-  Layers
+  Layers,
+  Mountain
 } from "lucide-react";
 import { Locale, translations } from "./translations";
 
@@ -40,6 +41,8 @@ interface ControlSidebarProps {
   setClimateYear: (year: 2026 | 2030 | 2040 | 2050) => void;
   selectedEarthquake: MockEarthquake | null;
   setSelectedEarthquake: (eq: MockEarthquake | null) => void;
+  showTectonicPlates: boolean;
+  setShowTectonicPlates: (show: boolean) => void;
 }
 
 export default function ControlSidebar({
@@ -56,7 +59,9 @@ export default function ControlSidebar({
   climateYear,
   setClimateYear,
   selectedEarthquake,
-  setSelectedEarthquake
+  setSelectedEarthquake,
+  showTectonicPlates,
+  setShowTectonicPlates
 }: ControlSidebarProps) {
   
   const years: (2026 | 2030 | 2040 | 2050)[] = [2026, 2030, 2040, 2050];
@@ -279,6 +284,76 @@ export default function ControlSidebar({
                   {climateYear === 2030 && <p>{t.climate2030}</p>}
                   {climateYear === 2040 && <p>{t.climate2040}</p>}
                   {climateYear === 2050 && <p>{t.climate2050}</p>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-stone-200/50" />
+
+          {/* Section 3: Tectonic Plates & Fault Lines */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className={`p-1.5 rounded-md transition-colors ${showTectonicPlates ? "bg-orange-50 text-orange-600" : "bg-stone-100 text-stone-400"}`}>
+                  <Mountain className="w-4 h-4" />
+                </div>
+                <span className="font-semibold text-sm text-stone-800 font-sans">{t.tectonicPlates}</span>
+              </div>
+
+              {/* Toggle Switch */}
+              <button
+                onClick={() => setShowTectonicPlates(!showTectonicPlates)}
+                className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
+                  showTectonicPlates ? "bg-stone-900" : "bg-stone-200"
+                }`}
+              >
+                <div
+                  className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 transform ${
+                    showTectonicPlates ? "translate-x-4.5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {showTectonicPlates && (
+              <div className="pl-8 pt-1 space-y-3 animate-fadeIn">
+                <p className="text-[11px] text-stone-500 leading-relaxed">{t.tectonicDesc}</p>
+                <div className="space-y-2">
+                  {/* Plate boundaries */}
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-[9px] text-orange-500 uppercase font-bold tracking-wider shrink-0">{t.plateBoundary}</span>
+                  </div>
+                  {[
+                    { label: t.sundaTrench, color: "bg-orange-400" },
+                    { label: t.bandaArc, color: "bg-orange-300" },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center gap-2 text-[10px] text-stone-600">
+                      <div className="flex items-center gap-0.5">
+                        <div className={`w-3 h-[2px] ${item.color}`} />
+                        <div className={`w-1.5 h-[2px] ${item.color} opacity-50`} />
+                        <div className={`w-1 h-[2px] ${item.color}`} />
+                      </div>
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
+
+                  {/* Fault lines */}
+                  <div className="flex items-center space-x-1.5 pt-1">
+                    <span className="text-[9px] text-rose-500 uppercase font-bold tracking-wider shrink-0">{t.faultLines}</span>
+                  </div>
+                  {[
+                    { label: t.sumatraFault },
+                    { label: t.paluFault },
+                    { label: t.floresThrust },
+                    { label: t.sorong },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center gap-2 text-[10px] text-stone-600">
+                      <div className="w-5 h-[1.5px] bg-rose-500" />
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

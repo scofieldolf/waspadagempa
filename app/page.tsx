@@ -38,6 +38,7 @@ export default function Home() {
   const [showClimateRisk, setShowClimateRisk] = useState<boolean>(false);
   const [climateYear, setClimateYear] = useState<2026 | 2030 | 2040 | 2050>(2026);
   const [selectedEarthquake, setSelectedEarthquake] = useState<MockEarthquake | null>(null);
+  const [showTectonicPlates, setShowTectonicPlates] = useState<boolean>(false);
 
   return (
     <div className="flex w-full h-full overflow-hidden bg-stone-50 relative select-none">
@@ -57,6 +58,8 @@ export default function Home() {
         setClimateYear={setClimateYear}
         selectedEarthquake={selectedEarthquake}
         setSelectedEarthquake={setSelectedEarthquake}
+        showTectonicPlates={showTectonicPlates}
+        setShowTectonicPlates={setShowTectonicPlates}
       />
 
       {/* 2. Right Map Canvas Area */}
@@ -70,6 +73,7 @@ export default function Home() {
           climateYear={climateYear}
           selectedEarthquake={selectedEarthquake}
           setSelectedEarthquake={setSelectedEarthquake}
+          showTectonicPlates={showTectonicPlates}
         />
       </main>
     </div>

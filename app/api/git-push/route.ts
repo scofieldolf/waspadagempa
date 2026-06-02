@@ -4,24 +4,13 @@ import { execSync } from 'child_process';
 export async function GET(): Promise<NextResponse> {
   try {
     const cwd = process.cwd();
-    
-    // Stage all modified files
     execSync('git add -A', { cwd });
-    
-    // Commit with feature message
     execSync(
-      'git commit -m "feat: implement live USGS data integration with auto-refresh and live status indicator"',
+      'git commit -m "feat: add tectonic plate boundaries and active fault line overlay"',
       { cwd }
     );
-    
-    // Push to origin
     const pushOutput = execSync('git push origin HEAD', { cwd }).toString();
-    
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Committed and pushed successfully',
-      output: pushOutput
-    });
+    return NextResponse.json({ success: true, output: pushOutput });
   } catch (error: unknown) {
     const err = error as { message?: string; stderr?: Buffer; stdout?: Buffer };
     return NextResponse.json({ 
