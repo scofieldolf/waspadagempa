@@ -53,7 +53,7 @@ export async function GET() {
         lat: coordinates[1], // Latitude from geometry
         lng: coordinates[0], // Longitude from geometry
         mag: properties.mag || 0,
-        place: properties.place || "Unknown Location",
+        location: properties.place || "Unknown Location",
         // Convert timestamp (ms since epoch) to standard human-parseable ISO-8601 string
         time: new Date(properties.time).toISOString(),
         tsunami: properties.tsunami === 1,

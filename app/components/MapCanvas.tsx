@@ -1,66 +1,17 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Polygon, useMapEvents, Polyline } from "react-leaflet";
 import L from "leaflet";
 import { MockEarthquake } from "./ControlSidebar";
-import { Clock, Waves, Compass, AlertCircle, MapPin, AlertTriangle, Radar } from "lucide-react";
+import { Clock, Waves, Compass, AlertCircle, MapPin, AlertTriangle, Radar, RefreshCw } from "lucide-react";
 import { Locale, translations } from "./translations";
 import { calculateDistance } from "../utils/geo";
 
-// Mock Earthquake Data centered around Indonesia
-const MOCK_EARTHQUAKES: MockEarthquake[] = [
-  {
-    id: "eq-001",
-    lat: 1.223,
-    lng: 97.452,
-    mag: 6.4,
-    depth: 12,
-    location: "94 km W of Gunungsitoli, Sumatra",
-    time: "2026-06-02T12:15:30.000Z",
-    tsunami: true
-  },
-  {
-    id: "eq-002",
-    lat: -6.842,
-    lng: 107.143,
-    mag: 4.8,
-    depth: 8,
-    location: "8 km NW of Cianjur, West Java",
-    time: "2026-06-02T04:22:15.000Z",
-    tsunami: false
-  },
-  {
-    id: "eq-003",
-    lat: -0.897,
-    lng: 119.822,
-    mag: 5.6,
-    depth: 18,
-    location: "15 km S of Palu, Central Sulawesi",
-    time: "2026-06-01T23:04:45.000Z",
-    tsunami: false
-  },
-  {
-    id: "eq-004",
-    lat: -6.211,
-    lng: 130.485,
-    mag: 6.9,
-    depth: 142,
-    location: "280 km SE of Ambon, Banda Sea",
-    time: "2026-06-01T15:42:00.000Z",
-    tsunami: true
-  },
-  {
-    id: "eq-005",
-    lat: -2.532,
-    lng: 140.684,
-    mag: 4.2,
-    depth: 25,
-    location: "12 km NE of Jayapura, Papua",
-    time: "2026-05-31T09:18:22.000Z",
-    tsunami: false
-  }
-];
+// Geographic bounding box for Indonesia & Ring of Fire region
+// lat: -20 to 30 (covers all of Indonesia, Philippines, PNG)
+// lng: 80 to 155 (covers Indian Ocean fault to Pacific)
+const INDONESIA_BBOX = { minLat: -20, maxLat: 30, minLng: 80, maxLng: 155 };
 
 // Mock Climate Risk Area coordinates with translation keys
 interface ClimateRiskArea {
@@ -189,8 +140,56 @@ export default function MapCanvas({
   // Safe Radius Calculator State
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Filter mock earthquakes based on user criteria
-  const filteredEarthquakes = MOCK_EARTHQUAKES.filter((eq) => {
+  // Live Earthquake Data State
+  const [earthquakes, setEarthquakes] = useState<MockEarthquake[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // Fetch live earthquake data from USGS (via /api/disaster proxy with 10min cache)
+  const fetchEarthquakes = useCallback(async () => {
+    setIsLoading(true);
+    setDataError(null);
+    try {
+      const res = await fetch("/api/disaster");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: MockEarthquake[] = await res.json();
+      // Filter to Indonesia & Ring of Fire bounding box
+      const regional = data.filter(
+        (eq) =>
+          eq.lat >= INDONESIA_BBOX.minLat &&
+          eq.lat <= INDONESIA_BBOX.maxLat &&
+          eq.lng >= INDONESIA_BBOX.minLng &&
+          eq.lng <= INDONESIA_BBOX.maxLng
+      );
+      setEarthquakes(regional);
+      setLastUpdated(new Date());
+    } catch {
+      setDataError(locale === "id" ? "Gagal memuat data seismik" : "Failed to load seismic data");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [locale]);
+
+  // Auto-fetch on mount and auto-refresh every 10 minutes (matches cache duration)
+  useEffect(() => {
+    fetchEarthquakes();
+    const interval = setInterval(fetchEarthquakes, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchEarthquakes]);
+
+  // Format how long ago the data was fetched
+  const formatLastUpdated = (date: Date): string => {
+    const diffMs = Date.now() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return locale === "id" ? "Baru saja" : "Just now";
+    if (diffMins < 60) return locale === "id" ? `${diffMins}m lalu` : `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    return locale === "id" ? `${diffHours}j lalu` : `${diffHours}h ago`;
+  };
+
+  // Filter live earthquake data based on user criteria
+  const filteredEarthquakes = earthquakes.filter((eq) => {
     if (!showEarthquakes) return false;
     if (earthquakeFilter === "Mag 4+") return eq.mag >= 4.0;
     if (earthquakeFilter === "Mag 6+") return eq.mag >= 6.0;
@@ -283,6 +282,71 @@ export default function MapCanvas({
 
   return (
     <div className="w-full h-full relative">
+
+      {/* Full-screen Loading Overlay — shown only on the very first load */}
+      {isLoading && earthquakes.length === 0 && (
+        <div className="absolute inset-0 z-[600] bg-stone-50/90 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+          <div className="flex flex-col items-center space-y-3">
+            <div className="relative w-10 h-10 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-2 border-stone-200" />
+              <div className="absolute inset-0 rounded-full border-2 border-stone-800 border-t-transparent animate-spin" />
+            </div>
+            <span className="text-[11px] font-mono font-bold text-stone-500 uppercase tracking-widest">
+              {locale === "id" ? "Memuat Data Seismik..." : "Loading Seismic Data..."}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Live Data Status Indicator — top-left of map */}
+      <div className="absolute top-4 left-4 z-[500] pointer-events-none">
+        <div className="pointer-events-auto flex items-center space-x-2 bg-stone-50/95 backdrop-blur-md border border-stone-200/60 px-3 py-1.5 rounded-lg shadow-sm font-mono text-[10px]">
+          {isLoading ? (
+            <>
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-stone-500 uppercase font-bold tracking-wider">
+                {locale === "id" ? "Memuat..." : "Loading..."}
+              </span>
+            </>
+          ) : dataError ? (
+            <>
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              <span className="text-red-600 uppercase font-bold tracking-wider">
+                {locale === "id" ? "Gagal" : "Error"}
+              </span>
+              <span className="text-stone-200">|</span>
+              <button
+                onClick={fetchEarthquakes}
+                className="text-stone-500 hover:text-stone-800 underline transition-colors"
+              >
+                {locale === "id" ? "Coba lagi" : "Retry"}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-emerald-700 uppercase font-bold tracking-wider">Live</span>
+              <span className="text-stone-200">|</span>
+              <span className="text-stone-600 font-semibold">
+                {earthquakes.length} {locale === "id" ? "kejadian" : "events"}
+              </span>
+              {lastUpdated && (
+                <>
+                  <span className="text-stone-200">|</span>
+                  <span className="text-stone-400">{formatLastUpdated(lastUpdated)}</span>
+                </>
+              )}
+              <button
+                onClick={fetchEarthquakes}
+                title={locale === "id" ? "Perbarui data" : "Refresh data"}
+                className="ml-0.5 text-stone-400 hover:text-stone-800 transition-colors active:scale-90"
+              >
+                <RefreshCw className="w-2.5 h-2.5" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
       <MapContainer
         center={[-2.5489, 118.0149]} // Centered on Indonesia
         zoom={5}
