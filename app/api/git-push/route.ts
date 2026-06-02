@@ -6,7 +6,7 @@ export async function GET(): Promise<NextResponse> {
     const cwd = process.cwd();
     execSync('git add -A', { cwd });
     execSync(
-      'git commit -m "design: update brand logo background to Claude premium terracotta color #cc785c"',
+      'git commit -m "feat: integrate GPS locate pin, Depth coloring, Sidebar compact event list feed, BMKG official Indonesian proxy feed switcher, and top-right Toast Alerts"',
       { cwd }
     );
     const pushOutput = execSync('git push origin HEAD', { cwd }).toString();

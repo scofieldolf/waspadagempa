@@ -77,7 +77,24 @@ export const translations = {
     magDist: "Magnitude Distribution",
     activeSectors: "Active Sectors",
     playbackActive: "Playback Active",
-    playbackPaused: "Playback Paused"
+    playbackPaused: "Playback Paused",
+    // Final Feature Keys
+    dataSource: "Seismic Feed Source",
+    sourceUsgs: "USGS (Global Feed)",
+    sourceBmkg: "BMKG (Official RI Feed)",
+    myLocation: "GPS Location",
+    gpsError: "GPS location services denied or not supported by browser",
+    colorMode: "Color Map Mode",
+    colorMag: "Color by Magnitude",
+    colorDepth: "Color by Depth",
+    shallow: "Shallow (<30 km)",
+    intermediate: "Intermediate (30-150 km)",
+    deep: "Deep (>150 km)",
+    eventList: "Seismic Event Feed",
+    focusMap: "Focus Map",
+    viewDetails: "Show Details",
+    alertMajor: "🚨 MAJOR SEISMIC DETECTED",
+    alertTsunami: "🌊 POTENTIAL TSUNAMI WARNING ACTIVE"
   },
   id: {
     subtitle: "Risiko Bencana & Iklim",
@@ -155,6 +172,23 @@ export const translations = {
     magDist: "Distribusi Magnitudo",
     activeSectors: "Sektor Aktif",
     playbackActive: "Pemutaran Aktif",
-    playbackPaused: "Pemutaran Jeda"
+    playbackPaused: "Pemutaran Jeda",
+    // Final Feature Keys
+    dataSource: "Sumber Data Seismik",
+    sourceUsgs: "USGS (Feed Global)",
+    sourceBmkg: "BMKG (Feed Resmi Indonesia)",
+    myLocation: "Lokasi GPS",
+    gpsError: "Layanan GPS ditolak atau tidak didukung oleh browser Anda",
+    colorMode: "Mode Warna Peta",
+    colorMag: "Warna via Magnitudo",
+    colorDepth: "Warna via Kedalaman",
+    shallow: "Dangkal (<30 km)",
+    intermediate: "Sedang (30-150 km)",
+    deep: "Dalam (>150 km)",
+    eventList: "Daftar Peristiwa Seismik",
+    focusMap: "Fokus Peta",
+    viewDetails: "Lihat Detail",
+    alertMajor: "🚨 TERDETEKSI GEMPA BUMI KUAT!",
+    alertTsunami: "🌊 PERINGATAN TSUNAMI AKTIF!"
   }
 };

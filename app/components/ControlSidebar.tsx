@@ -14,7 +14,9 @@ import {
   Mountain,
   Flame,
   History,
-  BarChart3
+  BarChart3,
+  Database,
+  Map
 } from "lucide-react";
 import { Locale, translations } from "./translations";
 
@@ -53,6 +55,12 @@ interface ControlSidebarProps {
   setShowTimeTravel: (show: boolean) => void;
   showStatsDashboard: boolean;
   setShowStatsDashboard: (show: boolean) => void;
+  // Final features
+  dataSource: "usgs" | "bmkg";
+  setDataSource: (source: "usgs" | "bmkg") => void;
+  colorMode: "magnitude" | "depth";
+  setColorMode: (mode: "magnitude" | "depth") => void;
+  earthquakes: MockEarthquake[];
 }
 
 export default function ControlSidebar({
@@ -77,7 +85,12 @@ export default function ControlSidebar({
   showTimeTravel,
   setShowTimeTravel,
   showStatsDashboard,
-  setShowStatsDashboard
+  setShowStatsDashboard,
+  dataSource,
+  setDataSource,
+  colorMode,
+  setColorMode,
+  earthquakes
 }: ControlSidebarProps) {
   
   const years: (2026 | 2030 | 2040 | 2050)[] = [2026, 2030, 2040, 2050];
@@ -91,6 +104,38 @@ export default function ControlSidebar({
       case 2040: return "bg-orange-500 text-orange-500 border-orange-500/20";
       case 2050: return "bg-rose-500 text-rose-500 border-rose-500/20";
       default: return "bg-stone-500 text-stone-500";
+    }
+  };
+
+  // Filter local copy of earthquakes for the sidebar compact feed
+  const filteredEvents = earthquakes.filter((eq) => {
+    if (earthquakeFilter === "Mag 4+") return eq.mag >= 4.0;
+    if (earthquakeFilter === "Mag 6+") return eq.mag >= 6.0;
+    return true;
+  });
+
+  // Calculate compact marker color based on magnitude or depth for feed integration
+  const getBadgeStyle = (eq: MockEarthquake) => {
+    if (colorMode === "depth") {
+      const depth = eq.depth;
+      if (depth < 30) {
+        return "bg-rose-600 border-rose-500/20 text-white";
+      } else if (depth < 150) {
+        return "bg-orange-500 border-orange-400/20 text-white";
+      } else {
+        return "bg-sky-600 border-sky-500/20 text-white";
+      }
+    } else {
+      const mag = eq.mag;
+      if (eq.tsunami) {
+        return "bg-red-600 border-red-500/20 text-white animate-pulse";
+      } else if (mag >= 6.0) {
+        return "bg-rose-600 border-rose-500/20 text-white";
+      } else if (mag >= 5.0) {
+        return "bg-amber-600 border-amber-500/20 text-white";
+      } else {
+        return "bg-stone-600 border-stone-500/20 text-white";
+      }
     }
   };
 
@@ -182,28 +227,146 @@ export default function ControlSidebar({
             </div>
 
             {showEarthquakes && (
-              <div className="pl-8 pt-1 space-y-3 animate-fadeIn">
-                <span className="text-[11px] text-stone-500 uppercase font-bold tracking-wider block">
-                  {t.magnitudeFilter}
-                </span>
-                <div className="flex gap-1.5 bg-stone-100/80 p-1 rounded-lg border border-stone-200/40">
-                  {(["All", "Mag 4+", "Mag 6+"] as const).map((filter) => {
-                    const active = earthquakeFilter === filter;
-                    return (
-                      <button
-                        key={filter}
-                        onClick={() => setEarthquakeFilter(filter)}
-                        className={`flex-1 text-center py-1.5 px-2 text-xs font-medium rounded-md transition-all duration-200 ${
-                          active
-                            ? "bg-white text-stone-950 shadow-sm border border-stone-200/20 font-semibold"
-                            : "text-stone-500 hover:text-stone-800 hover:bg-white/40"
-                        }`}
-                      >
-                        {filter === "All" ? t.all : filter}
-                      </button>
-                    );
-                  })}
+              <div className="pl-8 pt-1 space-y-4 animate-fadeIn">
+                {/* 🌊 Segmented Data Source Controller */}
+                <div className="space-y-2">
+                  <span className="text-[11px] text-stone-500 uppercase font-bold tracking-wider block flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-stone-400" />
+                    {t.dataSource}
+                  </span>
+                  <div className="flex gap-1.5 bg-stone-100/80 p-1 rounded-lg border border-stone-200/40 font-mono">
+                    <button
+                      onClick={() => setDataSource("usgs")}
+                      className={`flex-1 text-[10px] text-center py-1 rounded-md transition-all duration-200 ${
+                        dataSource === "usgs"
+                          ? "bg-white text-stone-950 shadow-sm border border-stone-200/20 font-bold"
+                          : "text-stone-400 hover:text-stone-700"
+                      }`}
+                    >
+                      USGS (Global)
+                    </button>
+                    <button
+                      onClick={() => setDataSource("bmkg")}
+                      className={`flex-1 text-[10px] text-center py-1 rounded-md transition-all duration-200 ${
+                        dataSource === "bmkg"
+                          ? "bg-white text-stone-950 shadow-sm border border-stone-200/20 font-bold"
+                          : "text-stone-400 hover:text-stone-700"
+                      }`}
+                    >
+                      BMKG (Official)
+                    </button>
+                  </div>
                 </div>
+
+                {/* Magnitude Filter */}
+                <div className="space-y-2">
+                  <span className="text-[11px] text-stone-500 uppercase font-bold tracking-wider block">
+                    {t.magnitudeFilter}
+                  </span>
+                  <div className="flex gap-1.5 bg-stone-100/80 p-1 rounded-lg border border-stone-200/40">
+                    {(["All", "Mag 4+", "Mag 6+"] as const).map((filter) => {
+                      const active = earthquakeFilter === filter;
+                      return (
+                        <button
+                          key={filter}
+                          onClick={() => setEarthquakeFilter(filter)}
+                          className={`flex-1 text-center py-1 px-1.5 text-[10px] font-medium rounded-md transition-all duration-200 ${
+                            active
+                              ? "bg-white text-stone-950 shadow-sm border border-stone-200/20 font-semibold"
+                              : "text-stone-500 hover:text-stone-800 hover:bg-white/40"
+                          }`}
+                        >
+                          {filter === "All" ? t.all : filter}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 🎨 Map Color Mode Selector */}
+                <div className="space-y-2">
+                  <span className="text-[11px] text-stone-500 uppercase font-bold tracking-wider block flex items-center gap-1.5">
+                    <Map className="w-3.5 h-3.5 text-stone-400" />
+                    {t.colorMode}
+                  </span>
+                  <div className="flex gap-1.5 bg-stone-100/80 p-1 rounded-lg border border-stone-200/40">
+                    <button
+                      onClick={() => setColorMode("magnitude")}
+                      className={`flex-1 text-[10px] text-center py-1.5 rounded-md transition-all duration-200 ${
+                        colorMode === "magnitude"
+                          ? "bg-white text-stone-950 shadow-sm border border-stone-200/20 font-semibold"
+                          : "text-stone-500 hover:text-stone-850"
+                      }`}
+                    >
+                      {t.colorMag}
+                    </button>
+                    <button
+                      onClick={() => setColorMode("depth")}
+                      className={`flex-1 text-[10px] text-center py-1.5 rounded-md transition-all duration-200 ${
+                        colorMode === "depth"
+                          ? "bg-white text-stone-950 shadow-sm border border-stone-200/20 font-semibold"
+                          : "text-stone-500 hover:text-stone-850"
+                      }`}
+                    >
+                      {t.colorDepth}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 📋 Compact Seismic Event Feed Panel */}
+                <div className="space-y-2 border-t border-stone-200/40 pt-4">
+                  <span className="text-[11px] text-stone-500 uppercase font-bold tracking-wider block font-mono">
+                    {t.eventList} ({filteredEvents.length})
+                  </span>
+                  <div className="max-h-[180px] overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+                    {filteredEvents.length === 0 ? (
+                      <p className="text-[11px] text-stone-400 font-semibold italic text-center py-4 bg-stone-100/30 rounded-lg">
+                        {locale === "id" ? "Tidak ada gempa terdeteksi" : "No seismic events detected"}
+                      </p>
+                    ) : (
+                      filteredEvents.map((eq) => (
+                        <div 
+                          key={eq.id}
+                          onClick={() => setSelectedEarthquake(eq)}
+                          className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer ${
+                            selectedEarthquake?.id === eq.id
+                              ? "bg-stone-950 text-stone-100 border-stone-950 shadow-md scale-[1.01]"
+                              : "bg-stone-100/50 hover:bg-stone-100 text-stone-700 border-stone-200/40"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2 overflow-hidden">
+                            {/* Mag/Depth Badge */}
+                            <div className={`w-8 h-8 rounded-lg font-mono font-bold text-xs flex items-center justify-center shrink-0 shadow-sm ${getBadgeStyle(eq)}`}>
+                              {eq.mag.toFixed(1)}
+                            </div>
+                            <div className="overflow-hidden leading-tight">
+                              <p className={`text-[10px] font-bold truncate ${selectedEarthquake?.id === eq.id ? "text-stone-50" : "text-stone-850"}`}>
+                                {eq.location.split(" of ")[1] || eq.location}
+                              </p>
+                              <span className="text-[9px] text-stone-400 font-mono">
+                                {new Date(eq.time).toLocaleTimeString(locale === "id" ? "id-ID" : "en-US", {
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                })} ({eq.depth} km)
+                              </span>
+                            </div>
+                          </div>
+
+                          <button 
+                            className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded border transition-colors shrink-0 ${
+                              selectedEarthquake?.id === eq.id
+                                ? "border-stone-800 text-stone-400 bg-stone-900"
+                                : "border-stone-200 text-stone-500 bg-white"
+                            }`}
+                          >
+                            {t.focusMap}
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
               </div>
             )}
           </div>
@@ -562,7 +725,7 @@ export default function ControlSidebar({
             <Layers className="w-3.5 h-3.5" />
             <span>{t.mapLayers}</span>
           </div>
-          <span>v1.1.0</span>
+          <span>v1.2.0</span>
         </div>
       </div>
 

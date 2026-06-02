@@ -45,6 +45,13 @@ export default function Home() {
   const [showTimeTravel, setShowTimeTravel] = useState<boolean>(false);
   const [showStatsDashboard, setShowStatsDashboard] = useState<boolean>(false);
 
+  // Final Feature States
+  const [dataSource, setDataSource] = useState<"usgs" | "bmkg">("usgs");
+  const [colorMode, setColorMode] = useState<"magnitude" | "depth">("magnitude");
+  
+  // Shared Earthquakes Pool for Sidebar Event List Panel
+  const [earthquakesPool, setEarthquakesPool] = useState<MockEarthquake[]>([]);
+
   return (
     <div className="flex w-full h-full overflow-hidden bg-stone-50 relative select-none">
       {/* 1. Claude-style Control Sidebar Panel */}
@@ -72,6 +79,12 @@ export default function Home() {
         setShowTimeTravel={setShowTimeTravel}
         showStatsDashboard={showStatsDashboard}
         setShowStatsDashboard={setShowStatsDashboard}
+        // Final features
+        dataSource={dataSource}
+        setDataSource={setDataSource}
+        colorMode={colorMode}
+        setColorMode={setColorMode}
+        earthquakes={earthquakesPool}
       />
 
       {/* 2. Right Map Canvas Area */}
@@ -93,6 +106,12 @@ export default function Home() {
           setShowTimeTravel={setShowTimeTravel}
           showStatsDashboard={showStatsDashboard}
           setShowStatsDashboard={setShowStatsDashboard}
+          // Final features
+          dataSource={dataSource}
+          setDataSource={setDataSource}
+          colorMode={colorMode}
+          setColorMode={setColorMode}
+          onDataLoaded={setEarthquakesPool}
         />
       </main>
     </div>
