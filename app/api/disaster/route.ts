@@ -90,12 +90,62 @@ export async function GET(request: Request) {
     });
 
   } catch (error) {
-    console.error("USGS API fetch failed:", error);
+    console.error("USGS API fetch failed, trying BMKG failover...", error);
 
     const { searchParams } = new URL(request.url);
     const period = searchParams.get("period") || "day";
     const isWeek = period === "week";
     const activeCache = isWeek ? cachedWeekData : cachedDayData;
+    const currentTime = Date.now();
+
+    try {
+      const bmkgRes = await fetch("https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json");
+      if (bmkgRes.ok) {
+        const rawData = await bmkgRes.json();
+        const gempas = rawData?.Infogempa?.gempa || [];
+        const normalizedData = gempas.map((item: any) => {
+          const coords = (item.Coordinates || "0,0").split(",");
+          const lat = parseFloat(coords[0]) || 0;
+          const lng = parseFloat(coords[1]) || 0;
+          const mag = parseFloat(item.Magnitude) || 0;
+          const depth = parseInt((item.Kedalaman || "0").replace(/\D/g, "")) || 0;
+          const potensi = (item.Potensi || "").toLowerCase();
+          const tsunami = potensi.includes("tsunami") && !potensi.includes("tidak");
+          const id = item.DateTime ? `bmkg-${item.DateTime.replace(/\D/g, "")}` : Math.random().toString(36).substring(2, 9);
+          
+          return {
+            id,
+            lat,
+            lng,
+            mag,
+            location: item.Wilayah || "Unknown Location",
+            time: item.DateTime || new Date().toISOString(),
+            tsunami,
+            depth
+          };
+        });
+
+        if (isWeek) {
+          cachedWeekData = normalizedData;
+          lastFetchedWeekTime = currentTime;
+        } else {
+          cachedDayData = normalizedData;
+          lastFetchedDayTime = currentTime;
+        }
+
+        return NextResponse.json(normalizedData, {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Cache": "FAILOVER",
+            "X-Cache-Source": "BMKG",
+            "X-Cache-Period": period,
+          },
+        });
+      }
+    } catch (bmkgError) {
+      console.error("BMKG failover fetch also failed:", bmkgError);
+    }
 
     // 5. Resilient Fallback mechanism
     if (activeCache) {

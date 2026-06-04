@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -16,7 +17,9 @@ import {
   History,
   BarChart3,
   Database,
-  Map
+  Map,
+  Bell,
+  Volume2
 } from "lucide-react";
 import { Locale, translations } from "./translations";
 
@@ -95,6 +98,41 @@ export default function ControlSidebar({
   
   const years: (2026 | 2030 | 2040 | 2050)[] = [2026, 2030, 2040, 2050];
   const t = translations[locale];
+
+  const [notifEnabled, setNotifEnabled] = useState<boolean>(false);
+  const [notifThreshold, setNotifThreshold] = useState<number>(5.0);
+
+  // Initialize notifications state from localStorage on client mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedEnabled = localStorage.getItem("notif_enabled") === "true";
+      const savedThreshold = parseFloat(localStorage.getItem("notif_threshold") || "5.0");
+      setNotifEnabled(savedEnabled);
+      setNotifThreshold(savedThreshold);
+    }
+  }, []);
+
+  const handleToggleNotifications = async () => {
+    if (!notifEnabled) {
+      if (typeof window !== "undefined" && "Notification" in window) {
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+          localStorage.setItem("notif_enabled", "true");
+          setNotifEnabled(true);
+        } else {
+          alert(t.notificationsPermissionDenied);
+        }
+      }
+    } else {
+      localStorage.setItem("notif_enabled", "false");
+      setNotifEnabled(false);
+    }
+  };
+
+  const handleChangeThreshold = (val: number) => {
+    localStorage.setItem("notif_threshold", val.toString());
+    setNotifThreshold(val);
+  };
 
   // Helper to get color code based on climate risk year severity progression
   const getYearColor = (yr: number) => {
@@ -367,6 +405,65 @@ export default function ControlSidebar({
                   </div>
                 </div>
 
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-stone-200/50" />
+
+          {/* Section: Web Push Notifications (Aria-friendly & focus rings) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className={`p-1.5 rounded-md transition-colors ${notifEnabled ? "bg-purple-50 text-purple-600" : "bg-stone-100 text-stone-400"}`}>
+                  <Bell className="w-4 h-4" />
+                </div>
+                <span className="font-semibold text-sm text-stone-850 font-sans">{t.pushNotifications}</span>
+              </div>
+              
+              <button
+                onClick={handleToggleNotifications}
+                className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-stone-900 focus:outline-none ${
+                  notifEnabled ? "bg-stone-900" : "bg-stone-200"
+                }`}
+                aria-label={t.enableNotifications}
+                aria-pressed={notifEnabled}
+              >
+                <div
+                  className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 transform ${
+                    notifEnabled ? "translate-x-4.5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {notifEnabled && (
+              <div className="pl-8 pt-1 space-y-3 animate-fadeIn">
+                <div className="space-y-2">
+                  <span className="text-[11px] text-stone-500 uppercase font-bold tracking-wider block">
+                    {t.notifThreshold}
+                  </span>
+                  <div className="flex gap-1.5 bg-stone-100/80 p-1 rounded-lg border border-stone-200/40">
+                    {([4.0, 5.0, 6.0] as const).map((mag) => {
+                      const active = notifThreshold === mag;
+                      return (
+                        <button
+                          key={mag}
+                          onClick={() => handleChangeThreshold(mag)}
+                          className={`flex-1 text-center py-1 px-1.5 text-[10px] font-semibold rounded-md transition-all duration-200 focus-visible:ring-1 focus-visible:ring-stone-900 focus:outline-none ${
+                            active
+                              ? "bg-white text-stone-950 shadow-sm border border-stone-200/20 font-semibold"
+                              : "text-stone-500 hover:text-stone-850 hover:bg-white/40"
+                          }`}
+                          aria-label={`M ${mag.toFixed(1)}+`}
+                        >
+                          M {mag.toFixed(1)}+
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
           </div>

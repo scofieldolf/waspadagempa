@@ -94,7 +94,12 @@ export const translations = {
     focusMap: "Focus Map",
     viewDetails: "Show Details",
     alertMajor: "🚨 MAJOR SEISMIC DETECTED",
-    alertTsunami: "🌊 POTENTIAL TSUNAMI WARNING ACTIVE"
+    alertTsunami: "🌊 POTENTIAL TSUNAMI WARNING ACTIVE",
+    pushNotifications: "Web Push Notifications",
+    notifThreshold: "Notification Threshold",
+    enableNotifications: "Enable Sound & Push Alerts",
+    notificationsPermissionDenied: "Notification permission denied or blocked by browser",
+    newEarthquakeAlert: "New Earthquake Alert"
   },
   id: {
     subtitle: "Risiko Bencana & Iklim",
@@ -189,6 +194,11 @@ export const translations = {
     focusMap: "Fokus Peta",
     viewDetails: "Lihat Detail",
     alertMajor: "🚨 TERDETEKSI GEMPA BUMI KUAT!",
-    alertTsunami: "🌊 PERINGATAN TSUNAMI AKTIF!"
+    alertTsunami: "🌊 PERINGATAN TSUNAMI AKTIF!",
+    pushNotifications: "Notifikasi Push Web",
+    notifThreshold: "Ambang Batas Alarm",
+    enableNotifications: "Aktifkan Alarm Suara & Push",
+    notificationsPermissionDenied: "Izin notifikasi ditolak atau diblokir oleh browser",
+    newEarthquakeAlert: "Peringatan Gempa Baru"
   }
 };

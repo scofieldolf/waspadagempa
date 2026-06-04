@@ -266,6 +266,38 @@ export default function MapCanvas({
   // In-App Toast Alerts state
   const [toastAlert, setToastAlert] = useState<MockEarthquake | null>(null);
 
+  // Web Push & Sound Notifications tracking Set ref
+  const notifiedIdsRef = React.useRef<Set<string>>(new Set());
+
+  // Dual tone sound generator using Web Audio API
+  const playAlertSound = useCallback(() => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(880, audioCtx.currentTime);
+      osc2.type = "triangle";
+      osc2.frequency.setValueAtTime(440, audioCtx.currentTime);
+
+      gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+
+      osc1.connect(gainNode);
+      osc2.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      osc1.start();
+      osc2.start();
+      osc1.stop(audioCtx.currentTime + 0.8);
+      osc2.stop(audioCtx.currentTime + 0.8);
+    } catch (err) {
+      console.warn("Could not play audio alert:", err);
+    }
+  }, []);
+
   // Legend Collapsible State
   const [legendExpanded, setLegendExpanded] = useState<boolean>(true);
 
@@ -340,15 +372,22 @@ export default function MapCanvas({
     }
   }, []);
 
-  // Fetch live earthquake data from USGS or BMKG proxy
+  // Fetch live earthquake data from USGS or BMKG proxy with a 10s connection timeout
   const fetchEarthquakes = useCallback(async (period: "day" | "week" = "day", source: "usgs" | "bmkg" = "usgs") => {
     setIsLoading(true);
     setDataError(null);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
+
     try {
       const url = source === "bmkg" 
         ? "/api/bmkg" 
         : `/api/disaster?period=${period}`;
-      const res = await fetch(url);
+      
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: MockEarthquake[] = await res.json();
       
@@ -365,19 +404,61 @@ export default function MapCanvas({
       // Propagate shared earthquakes list back up to home layout for sidebar synchronization!
       if (onDataLoaded) onDataLoaded(regional);
       setLastUpdated(new Date());
-    } catch {
-      setDataError(locale === "id" ? "Gagal memuat data seismik" : "Failed to load seismic data");
+
+      // Push notification trigger checks
+      const isInitialLoad = notifiedIdsRef.current.size === 0;
+      if (isInitialLoad) {
+        regional.forEach((eq) => notifiedIdsRef.current.add(eq.id));
+      } else {
+        const savedEnabled = localStorage.getItem("notif_enabled") === "true";
+        const savedThreshold = parseFloat(localStorage.getItem("notif_threshold") || "5.0");
+
+        if (savedEnabled && Notification.permission === "granted") {
+          regional.forEach((eq) => {
+            if (!notifiedIdsRef.current.has(eq.id)) {
+              notifiedIdsRef.current.add(eq.id);
+              if (eq.mag >= savedThreshold) {
+                try {
+                  const notifTitle = locale === "id" 
+                    ? `⚠️ Peringatan Gempa M ${eq.mag.toFixed(1)}` 
+                    : `⚠️ Earthquake Alert M ${eq.mag.toFixed(1)}`;
+                  const notifBody = `${eq.location}\nKedalaman: ${eq.depth} km`;
+                  
+                  new Notification(notifTitle, {
+                    body: notifBody,
+                    icon: "/globe.svg",
+                    tag: eq.id
+                  });
+                  
+                  playAlertSound();
+                } catch (e) {
+                  console.error("Error displaying push notification:", e);
+                }
+              }
+            }
+          });
+        } else {
+          regional.forEach((eq) => notifiedIdsRef.current.add(eq.id));
+        }
+      }
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === "AbortError") {
+        setDataError(locale === "id" ? "Koneksi timeout. Silakan coba lagi." : "Connection timed out. Please try again.");
+      } else {
+        setDataError(locale === "id" ? "Gagal memuat data seismik" : "Failed to load seismic data");
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [locale, onDataLoaded]);
+  }, [locale, onDataLoaded, playAlertSound]);
 
-  // Auto-fetch on mount, when Time Travel period shifts, or when active Data Source changes
+  // Auto-fetch on mount, when Time Travel period shifts, or when active Data Source changes (polling every 5 minutes)
   useEffect(() => {
     fetchEarthquakes(showTimeTravel ? "week" : "day", dataSource);
     const interval = setInterval(() => {
       fetchEarthquakes(showTimeTravel ? "week" : "day", dataSource);
-    }, 10 * 60 * 1000);
+    }, 5 * 60 * 1000); // 5 minutes interval
     return () => clearInterval(interval);
   }, [fetchEarthquakes, showTimeTravel, dataSource]);
 
@@ -1553,6 +1634,64 @@ export default function MapCanvas({
           )}
         </div>
       )}
+
+      {/* Initial Load Failure Fallback Screen (WCAG Compliant & Keyboard Focusable) */}
+      {dataError && earthquakes.length === 0 && (
+        <div className="absolute inset-0 z-[600] bg-stone-50/95 backdrop-blur-sm flex items-center justify-center pointer-events-auto">
+          <div 
+            className="flex flex-col items-center space-y-4 p-6 bg-white rounded-2xl shadow-xl max-w-sm text-center border border-stone-200"
+            role="alert"
+            tabIndex={0}
+          >
+            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500 shrink-0">
+              <AlertTriangle className="w-6 h-6 text-red-500 animate-bounce" aria-hidden="true" />
+            </div>
+            <div className="space-y-1">
+              <span className="text-xs font-bold font-mono tracking-widest uppercase text-red-500 block">
+                {locale === "id" ? "Gagal Memuat Data Seismik" : "Failed to Load Seismic Data"}
+              </span>
+              <p className="text-[10px] text-stone-600 font-mono leading-relaxed">
+                {dataError}
+              </p>
+            </div>
+            <button
+              onClick={() => fetchEarthquakes(showTimeTravel ? "week" : "day", dataSource)}
+              className="px-4.5 py-2 bg-stone-900 hover:bg-black focus-visible:ring-2 focus-visible:ring-stone-900 focus:outline-none text-white font-bold text-xs rounded-lg shadow transition-all active:scale-95"
+              aria-label={locale === "id" ? "Coba lagi memuat data" : "Retry loading data"}
+            >
+              {locale === "id" ? "Coba Lagi" : "Retry"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* WCAG 2.1 AA Tabular Screen Reader Alternative */}
+      <section className="sr-only" aria-live="polite">
+        <h2>{locale === "id" ? "Daftar Gempa Bumi Terbaru (Alternatif Aksesibilitas)" : "List of Recent Earthquakes (Accessibility Alternative)"}</h2>
+        <table>
+          <caption>{locale === "id" ? "Tabel berisi gempa bumi terbaru beserta koordinat, magnitudo, kedalaman, dan info tsunami" : "Table of recent earthquakes with coordinates, magnitude, depth, and tsunami alerts"}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{locale === "id" ? "Lokasi" : "Location"}</th>
+              <th scope="col">{locale === "id" ? "Magnitudo" : "Magnitude"}</th>
+              <th scope="col">{locale === "id" ? "Kedalaman" : "Depth"}</th>
+              <th scope="col">{locale === "id" ? "Waktu" : "Time"}</th>
+              <th scope="col">{locale === "id" ? "Potensi Tsunami" : "Tsunami Risk"}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredEarthquakes.map((eq) => (
+              <tr key={eq.id}>
+                <td>{eq.location}</td>
+                <td>M {eq.mag.toFixed(1)}</td>
+                <td>{eq.depth} km</td>
+                <td>{new Date(eq.time).toLocaleString(locale === "id" ? "id-ID" : "en-US")}</td>
+                <td>{eq.tsunami ? (locale === "id" ? "Ya (Peringatan)" : "Yes (Warning)") : (locale === "id" ? "Tidak" : "No")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
     </div>
   );
 }

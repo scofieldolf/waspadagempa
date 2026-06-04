@@ -86,7 +86,47 @@ export async function GET() {
     });
 
   } catch (error) {
-    console.error("BMKG API fetch failed:", error);
+    console.error("BMKG API fetch failed, trying USGS failover...", error);
+
+    try {
+      const usgsRes = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson");
+      if (usgsRes.ok) {
+        const usgsData = await usgsRes.json();
+        const features = usgsData.features || [];
+        const normalizedData = features
+          .map((feat: any) => {
+            const coords = feat.geometry?.coordinates || [0, 0, 0];
+            const properties = feat.properties || {};
+            return {
+              id: feat.id || Math.random().toString(36).substring(2, 9),
+              lat: coords[1],
+              lng: coords[0],
+              mag: properties.mag || 0,
+              location: properties.place || "Unknown Location",
+              time: new Date(properties.time).toISOString(),
+              tsunami: properties.tsunami === 1,
+              depth: coords[2] || 0
+            };
+          })
+          .filter((eq: any) => 
+            eq.lat >= -11 && eq.lat <= 6 && eq.lng >= 95 && eq.lng <= 141
+          );
+
+        cachedBmkgData = normalizedData;
+        lastFetchedBmkgTime = currentTime;
+
+        return NextResponse.json(normalizedData, {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Cache": "FAILOVER",
+            "X-Cache-Source": "USGS",
+          },
+        });
+      }
+    } catch (usgsError) {
+      console.error("USGS failover fetch also failed:", usgsError);
+    }
 
     // 5. Resilient Fallback to cached data if exists
     if (cachedBmkgData) {
