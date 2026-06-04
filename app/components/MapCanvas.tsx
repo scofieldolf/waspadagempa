@@ -1007,9 +1007,59 @@ export default function MapCanvas({
         )}
       </MapContainer>
 
-      {/* 📊 Bottom-Left Panels Container (Playback Controller & Statistics Dashboard) */}
-      {(showTimeTravel || showStatsDashboard) && (
+      {/* 📊 Bottom-Left Panels Container (Playback Controller, Statistics Dashboard & Safe Radius Calculator) */}
+      {(showTimeTravel || showStatsDashboard || (userLocation && activeNearestEarthquake)) && (
         <div className="absolute bottom-6 left-4 right-4 md:left-6 md:right-auto md:w-[300px] z-[500] pointer-events-none flex flex-col gap-3">
+          
+          {/* Safe Radius Calculator Card (Mobile only) */}
+          {userLocation && activeNearestEarthquake && (
+            <div className="block md:hidden pointer-events-auto bg-stone-900/95 text-stone-100 backdrop-blur-md border border-stone-850 p-4 rounded-xl shadow-lg w-full flex flex-col space-y-2.5 font-sans animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-1.5">
+                  <Radar className="w-4 h-4 text-red-400 animate-pulse" />
+                  <span className="text-[11px] font-bold text-stone-200 uppercase tracking-wider font-mono">
+                    {t.nearestEarthquake}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setUserLocation(null)}
+                  className="text-[10px] text-stone-400 hover:text-white transition-colors font-semibold"
+                >
+                  {t.clearDistance}
+                </button>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider block">
+                  {t.distanceToNearest}
+                </span>
+                <div className="flex items-baseline space-x-1.5">
+                  <span className="text-2xl font-bold font-mono tracking-tight text-white">
+                    {nearestDistance.toLocaleString(locale === "id" ? "id-ID" : "en-US")}
+                  </span>
+                  <span className="text-xs font-semibold text-stone-400 font-mono">km</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-stone-800/80 flex items-center space-x-1.5">
+                {nearestDistance < 100 ? (
+                  <>
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                    <span className="text-[10px] font-bold text-amber-400 uppercase font-mono">
+                      {t.statusWaspada}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="text-[10px] font-bold text-emerald-400 uppercase font-mono">
+                      {t.statusAman}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
           
           {/* ⏳ Time Travel Playback Controller */}
           {showTimeTravel && chronologicalEarthquakes.length > 0 && (
@@ -1345,9 +1395,9 @@ export default function MapCanvas({
 
       {/* Floating Overlays Container on bottom-right of Map */}
       <div className="absolute bottom-6 right-6 z-[500] pointer-events-none flex flex-col items-end space-y-3">
-        {/* Safe Radius Calculator Card */}
+        {/* Safe Radius Calculator Card (Desktop only) */}
         {userLocation && activeNearestEarthquake && (
-          <div className="pointer-events-auto bg-stone-900/95 text-stone-100 backdrop-blur-md border border-stone-850 p-4 rounded-xl shadow-lg w-[240px] flex flex-col space-y-2.5 font-sans animate-fadeIn">
+          <div className="hidden md:flex pointer-events-auto bg-stone-900/95 text-stone-100 backdrop-blur-md border border-stone-850 p-4 rounded-xl shadow-lg w-[240px] flex flex-col space-y-2.5 font-sans animate-fadeIn">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-1.5">
                 <Radar className="w-4 h-4 text-red-400 animate-pulse" />

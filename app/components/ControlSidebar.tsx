@@ -144,28 +144,28 @@ export default function ControlSidebar({
       {/* Sidebar Panel Container */}
       <div
         className={`h-full bg-stone-50/95 backdrop-blur-md border-r border-stone-200/60 transition-all duration-300 ease-in-out flex flex-col shadow-xl shadow-stone-900/5 ${
-          sidebarCollapsed ? "w-0 overflow-hidden border-r-0" : "w-[340px]"
+          sidebarCollapsed ? "w-0 overflow-hidden border-r-0" : "w-full md:w-[340px]"
         }`}
       >
         {/* Header */}
-        <div className="p-6 border-b border-stone-200/50 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-[#cc785c] flex items-center justify-center text-stone-50 shadow-md">
-              <Compass className="w-4 h-4 animate-spin-slow" />
+        <div className="p-4 md:p-6 border-b border-stone-200/50 flex items-center justify-between gap-3">
+          <div className="flex items-center space-x-2 md:space-x-3 min-w-0">
+            <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-[#cc785c] flex items-center justify-center text-stone-50 shadow-md shrink-0">
+              <Compass className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin-slow" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-stone-950 font-serif leading-none">
+            <div className="min-w-0">
+              <h1 className="text-lg md:text-xl font-bold tracking-tight text-stone-950 font-serif leading-none truncate">
                 Waspadagempa
               </h1>
-              <p className="text-[10px] text-stone-500 mt-1 uppercase tracking-wider font-semibold font-mono">
+              <p className="text-[9px] md:text-[10px] text-stone-500 mt-1 uppercase tracking-wider font-semibold font-mono truncate">
                 {t.subtitle}
               </p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5 md:space-x-2 shrink-0">
             {/* Elegant Language Pill Switcher */}
-            <div className="flex bg-stone-100 p-0.5 rounded-md border border-stone-200/40 text-[10px] font-mono font-bold">
+            <div className="flex bg-stone-100 p-0.5 rounded-md border border-stone-200/40 text-[9px] md:text-[10px] font-mono font-bold">
               <button
                 onClick={() => setLocale("id")}
                 className={`px-1.5 py-0.5 rounded transition-all duration-150 active:scale-95 ${
