@@ -446,16 +446,7 @@ export default function MapCanvas({
 
   const activeNearestEarthquake = nearestEarthquake;
 
-  // Dynamic position classes for Playback Controller to prevent overlap on both mobile and desktop
-  const playbackPositionClass = useMemo(() => {
-    if (!showStatsDashboard) {
-      return "bottom-6 left-4 right-4 md:left-6 md:right-auto md:w-[300px]";
-    }
-    // On mobile: always at bottom-20 (above collapsed stats dashboard at bottom-6)
-    // On desktop: stack above stats dashboard depending on whether it is expanded
-    const desktopBottom = statsExpanded ? "md:bottom-[440px]" : "md:bottom-24";
-    return `bottom-20 ${desktopBottom} left-4 right-4 md:left-6 md:right-auto md:translate-x-0 md:w-[300px]`;
-  }, [showStatsDashboard, statsExpanded]);
+
 
   // Calculate statistics metrics dynamically
   const statsTotal = filteredEarthquakes.length;
@@ -659,7 +650,7 @@ export default function MapCanvas({
       )}
 
       {/* Live Data Status Indicator — top-left of map */}
-      <div className="absolute top-4 left-4 z-[500] pointer-events-none flex flex-col space-y-2 items-start">
+      <div className={`absolute top-4 ${sidebarCollapsed ? "left-16" : "left-4"} z-[500] pointer-events-none flex flex-col space-y-2 items-start transition-[left] duration-300`}>
         <div className="pointer-events-auto flex items-center space-x-2 bg-stone-50/95 backdrop-blur-md border border-stone-200/60 px-3 py-1.5 rounded-lg shadow-sm font-mono text-[10px]">
           {isLoading ? (
             <>
@@ -1016,186 +1007,192 @@ export default function MapCanvas({
         )}
       </MapContainer>
 
-      {/* ⏳ Time Travel Playback Controller — Floating Bottom Left (Stacked above Stats Dashboard) */}
-      {showTimeTravel && chronologicalEarthquakes.length > 0 && (
-        <div className={`absolute ${playbackPositionClass} z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-250 py-3 px-4 rounded-xl shadow-lg flex flex-col gap-3 font-sans animate-fadeIn`}>
-          {/* Controls: Play/Pause/Speed & Current Time */}
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center space-x-2 shrink-0">
-              <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className={`w-8.5 h-8.5 rounded-lg flex items-center justify-center transition-all border active:scale-95 shadow-sm cursor-pointer ${
-                  isPlaying 
-                    ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600" 
-                    : "bg-white hover:bg-stone-100 text-stone-700 border-stone-200"
-                }`}
-                title={isPlaying ? "Pause" : "Play"}
-              >
-                {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current animate-pulse" /> : <Play className="w-3.5 h-3.5 fill-current ml-0.5" />}
-              </button>
-
-              {/* Playback speed pills */}
-              <div className="flex bg-stone-100 p-0.5 rounded-lg border border-stone-200/40 text-[9px] font-mono font-bold">
-                {([1, 2, 5, 10] as const).map((speed) => (
+      {/* 📊 Bottom-Left Panels Container (Playback Controller & Statistics Dashboard) */}
+      {(showTimeTravel || showStatsDashboard) && (
+        <div className="absolute bottom-6 left-4 right-4 md:left-6 md:right-auto md:w-[300px] z-[500] pointer-events-none flex flex-col gap-3">
+          
+          {/* ⏳ Time Travel Playback Controller */}
+          {showTimeTravel && chronologicalEarthquakes.length > 0 && (
+            <div className="pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 py-3 px-4 rounded-xl shadow-lg flex flex-col gap-3 font-sans animate-fadeIn">
+              {/* Controls: Play/Pause/Speed & Current Time */}
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center space-x-2 shrink-0">
                   <button
-                    key={speed}
-                    onClick={() => setPlaybackSpeed(speed)}
-                    className={`px-1.5 py-0.5 rounded transition-all duration-150 active:scale-95 cursor-pointer ${
-                      playbackSpeed === speed
-                        ? "bg-white text-stone-900 shadow-sm border border-stone-200/10 font-bold"
-                        : "text-stone-400 hover:text-stone-700"
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className={`w-8.5 h-8.5 rounded-lg flex items-center justify-center transition-all border active:scale-95 shadow-sm cursor-pointer ${
+                      isPlaying 
+                        ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600" 
+                        : "bg-white hover:bg-stone-100 text-stone-700 border-stone-200"
                     }`}
+                    title={isPlaying ? "Pause" : "Play"}
                   >
-                    {speed}x
+                    {isPlaying ? <Pause className="w-3.5 h-3.5 fill-current animate-pulse" /> : <Play className="w-3.5 h-3.5 fill-current ml-0.5" />}
                   </button>
-                ))}
-              </div>
-            </div>
 
-            {/* Current Event Timestamp Indicator */}
-            <div className="flex flex-col items-end text-right font-mono justify-center leading-none">
-              <span className="text-[8px] text-purple-600 font-bold uppercase tracking-wider flex items-center gap-0.5 mb-0.5 justify-end">
-                <Clock className="w-2.5 h-2.5 text-purple-500 animate-spin-slow" />
-                {isPlaying ? t.playbackActive : t.playbackPaused}
-              </span>
-              <span className="text-[10px] font-bold text-stone-850">
-                {chronologicalEarthquakes[playbackIndex]
-                  ? new Date(chronologicalEarthquakes[playbackIndex].time).toLocaleDateString(locale === "id" ? "id-ID" : "en-US", {
-                      month: "short",
-                      day: "numeric"
-                    })
-                  : "..."}
-              </span>
-            </div>
-          </div>
-
-          {/* Progress Slider */}
-          <div className="w-full flex items-center space-x-2.5">
-            <input
-              type="range"
-              min={0}
-              max={chronologicalEarthquakes.length - 1}
-              value={playbackIndex}
-              onChange={(e) => {
-                setPlaybackIndex(parseInt(e.target.value));
-                setIsPlaying(false); // Stop playback upon manual seek
-              }}
-              className="flex-1 h-1 bg-stone-200 rounded-full appearance-none cursor-pointer accent-stone-900 hover:accent-stone-950 focus:outline-none"
-            />
-            <span className="text-[9px] text-stone-400 font-mono shrink-0">
-              {playbackIndex + 1}/{chronologicalEarthquakes.length}
-            </span>
-          </div>
-
-          {/* Detailed Hour/Time line at the bottom */}
-          <div className="text-[9px] text-stone-400 font-mono border-t border-stone-200/50 pt-1.5 flex justify-between w-full">
-            <span>{locale === "id" ? "Waktu Kejadian:" : "Event Time:"}</span>
-            <span className="font-bold text-stone-600">
-              {chronologicalEarthquakes[playbackIndex]
-                ? new Date(chronologicalEarthquakes[playbackIndex].time).toLocaleTimeString(locale === "id" ? "id-ID" : "en-US", {
-                    hour: "2-digit",
-                    minute: "2-digit"
-                  }) + (locale === "id" ? " WIB" : " Local")
-                : "..."}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* 📊 Collapsible Statistics Dashboard Panel — Floating Bottom Left */}
-      {showStatsDashboard && (
-        <div className="absolute bottom-6 left-4 right-4 md:left-6 md:right-auto md:w-[300px] z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 rounded-xl shadow-lg font-sans flex flex-col overflow-hidden animate-fadeIn">
-          {/* Header */}
-          <div 
-            onClick={() => setStatsExpanded(!statsExpanded)}
-            className="p-3.5 border-b border-stone-200/50 flex items-center justify-between cursor-pointer hover:bg-stone-100/50 transition-colors"
-          >
-            <div className="flex items-center space-x-2">
-              <BarChart3 className="w-4 h-4 text-stone-700" />
-              <span className="text-xs font-bold text-stone-900 uppercase tracking-wider font-mono">
-                {t.statsDashboard}
-              </span>
-            </div>
-            <button className="text-stone-400 hover:text-stone-700">
-              {statsExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-            </button>
-          </div>
-
-          {/* Collapsible Content */}
-          {statsExpanded && (
-            <div className="p-4 space-y-4 max-h-[60vh] md:max-h-[380px] overflow-y-auto">
-              {/* Quick Metrics Grid */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono">
-                  <span className="text-[9px] text-stone-400 font-bold block uppercase">{t.totalEvents}</span>
-                  <span className="text-lg font-bold text-stone-900">{statsTotal}</span>
+                  {/* Playback speed pills */}
+                  <div className="flex bg-stone-100 p-0.5 rounded-lg border border-stone-200/40 text-[9px] font-mono font-bold">
+                    {([1, 2, 5, 10] as const).map((speed) => (
+                      <button
+                        key={speed}
+                        onClick={() => setPlaybackSpeed(speed)}
+                        className={`px-1.5 py-0.5 rounded transition-all duration-150 active:scale-95 cursor-pointer ${
+                          playbackSpeed === speed
+                            ? "bg-white text-stone-900 shadow-sm border border-stone-200/10 font-bold"
+                            : "text-stone-400 hover:text-stone-700"
+                        }`}
+                      >
+                        {speed}x
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono relative overflow-hidden">
-                  <span className="text-[9px] text-stone-400 font-bold block uppercase">{t.maxMagnitude}</span>
-                  <span className="text-lg font-bold text-rose-600">M {statsMaxMag > 0 ? statsMaxMag.toFixed(1) : "0.0"}</span>
-                </div>
-                <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono">
-                  <span className="text-[9px] text-stone-400 font-bold block uppercase">{t.avgDepth}</span>
-                  <span className="text-lg font-bold text-stone-850">{statsAvgDepth} km</span>
-                </div>
-                <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono">
-                  <span className="text-[9px] text-stone-400 font-bold block uppercase">{t.tsunamiAlerts}</span>
-                  <span className={`text-lg font-bold ${statsTsunami > 0 ? "text-red-500 animate-pulse font-bold" : "text-stone-500"}`}>
-                    {statsTsunami}
+
+                {/* Current Event Timestamp Indicator */}
+                <div className="flex flex-col items-end text-right font-mono justify-center leading-none">
+                  <span className="text-[8px] text-purple-600 font-bold uppercase tracking-wider flex items-center gap-0.5 mb-0.5 justify-end">
+                    <Clock className="w-2.5 h-2.5 text-purple-500 animate-spin-slow" />
+                    {isPlaying ? t.playbackActive : t.playbackPaused}
+                  </span>
+                  <span className="text-[10px] font-bold text-stone-850">
+                    {chronologicalEarthquakes[playbackIndex]
+                      ? new Date(chronologicalEarthquakes[playbackIndex].time).toLocaleDateString(locale === "id" ? "id-ID" : "en-US", {
+                          month: "short",
+                          day: "numeric"
+                        })
+                      : "..."}
                   </span>
                 </div>
               </div>
 
-              {/* Sector Stress Distribution Chart */}
-              <div className="space-y-2 border-t border-stone-200/50 pt-3">
-                <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider font-mono block">
-                  {t.sectorDist}
+              {/* Progress Slider */}
+              <div className="w-full flex items-center space-x-2.5">
+                <input
+                  type="range"
+                  min={0}
+                  max={chronologicalEarthquakes.length - 1}
+                  value={playbackIndex}
+                  onChange={(e) => {
+                    setPlaybackIndex(parseInt(e.target.value));
+                    setIsPlaying(false); // Stop playback upon manual seek
+                  }}
+                  className="flex-1 h-1 bg-stone-200 rounded-full appearance-none cursor-pointer accent-stone-900 hover:accent-stone-950 focus:outline-none"
+                />
+                <span className="text-[9px] text-stone-400 font-mono shrink-0">
+                  {playbackIndex + 1}/{chronologicalEarthquakes.length}
                 </span>
-                <div className="space-y-2 text-[10px]">
-                  {[
-                    { name: locale === "id" ? "Sektor Sumatra" : "Sumatra Sector", count: sectorSumatra, color: "bg-orange-500" },
-                    { name: locale === "id" ? "Sektor Jawa" : "Java Sector", count: sectorJava, color: "bg-amber-500" },
-                    { name: locale === "id" ? "Sektor Sulawesi" : "Sulawesi Sector", count: sectorSulawesi, color: "bg-rose-500" },
-                    { name: locale === "id" ? "Laut Banda" : "Banda Sea", count: sectorBanda, color: "bg-red-500" },
-                    { name: locale === "id" ? "Sektor Papua" : "Papua Sector", count: sectorPapua, color: "bg-stone-500" },
-                  ].map((sector) => {
-                    const percentage = statsTotal > 0 ? (sector.count / statsTotal) * 100 : 0;
-                    return (
-                      <div key={sector.name} className="space-y-1">
-                        <div className="flex justify-between font-mono text-[9px] font-semibold text-stone-600">
-                          <span>{sector.name}</span>
-                          <span>{sector.count} ({Math.round(percentage)}%)</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-stone-200/60 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full ${sector.color} transition-all duration-500`}
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
 
-              {/* Sparkling AI Briefing Trigger Button */}
-              <div className="pt-2 border-t border-stone-200/50">
-                <button
-                  onClick={generateAIBriefing}
-                  disabled={loadingBriefing}
-                  className="w-full bg-gradient-to-r from-stone-900 via-stone-850 to-stone-900 text-white hover:from-black hover:to-stone-950 font-sans text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:shadow-lg active:scale-[0.98] transition-all relative overflow-hidden group disabled:opacity-75 disabled:pointer-events-none"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin-slow group-hover:scale-110 transition-transform" />
-                  <span>
-                    {loadingBriefing 
-                      ? (locale === "id" ? "Menganalisis..." : "Analyzing...") 
-                      : t.generateBriefing}
+              {/* Detailed Hour/Time line at the bottom */}
+              <div className="text-[9px] text-stone-400 font-mono border-t border-stone-200/50 pt-1.5 flex justify-between w-full">
+                <span>{locale === "id" ? "Waktu Kejadian:" : "Event Time:"}</span>
+                <span className="font-bold text-stone-600">
+                  {chronologicalEarthquakes[playbackIndex]
+                    ? new Date(chronologicalEarthquakes[playbackIndex].time).toLocaleTimeString(locale === "id" ? "id-ID" : "en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      }) + (locale === "id" ? " WIB" : " Local")
+                    : "..."}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* 📊 Collapsible Statistics Dashboard Panel */}
+          {showStatsDashboard && (
+            <div className="pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 rounded-xl shadow-lg font-sans flex flex-col overflow-hidden animate-fadeIn">
+              {/* Header */}
+              <div 
+                onClick={() => setStatsExpanded(!statsExpanded)}
+                className="p-3.5 border-b border-stone-200/50 flex items-center justify-between cursor-pointer hover:bg-stone-100/50 transition-colors"
+              >
+                <div className="flex items-center space-x-2">
+                  <BarChart3 className="w-4 h-4 text-stone-700" />
+                  <span className="text-xs font-bold text-stone-900 uppercase tracking-wider font-mono">
+                    {t.statsDashboard}
                   </span>
-                  
-                  {/* Subtle pulsing background glow */}
-                  <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none animate-pulse" />
+                </div>
+                <button className="text-stone-400 hover:text-stone-700">
+                  {statsExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                 </button>
               </div>
+
+              {/* Collapsible Content */}
+              {statsExpanded && (
+                <div className="p-4 space-y-4 max-h-[60vh] md:max-h-[380px] overflow-y-auto">
+                  {/* Quick Metrics Grid */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono">
+                      <span className="text-[9px] text-stone-400 font-bold block uppercase">{t.totalEvents}</span>
+                      <span className="text-lg font-bold text-stone-900">{statsTotal}</span>
+                    </div>
+                    <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono relative overflow-hidden">
+                      <span className="text-[9px] text-stone-400 font-bold block uppercase">{t.maxMagnitude}</span>
+                      <span className="text-lg font-bold text-rose-600">M {statsMaxMag > 0 ? statsMaxMag.toFixed(1) : "0.0"}</span>
+                    </div>
+                    <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono">
+                      <span className="text-[9px] text-stone-400 font-bold block uppercase">{t.avgDepth}</span>
+                      <span className="text-lg font-bold text-stone-850">{statsAvgDepth} km</span>
+                    </div>
+                    <div className="bg-stone-100/60 border border-stone-200/20 p-2.5 rounded-lg text-center font-mono">
+                      <span className="text-[9px] text-stone-400 font-bold block uppercase">{t.tsunamiAlerts}</span>
+                      <span className={`text-lg font-bold ${statsTsunami > 0 ? "text-red-500 animate-pulse font-bold" : "text-stone-500"}`}>
+                        {statsTsunami}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Sector Stress Distribution Chart */}
+                  <div className="space-y-2 border-t border-stone-200/50 pt-3">
+                    <span className="text-[9px] text-stone-400 uppercase font-bold tracking-wider font-mono block">
+                      {t.sectorDist}
+                    </span>
+                    <div className="space-y-2 text-[10px]">
+                      {[
+                        { name: locale === "id" ? "Sektor Sumatra" : "Sumatra Sector", count: sectorSumatra, color: "bg-orange-500" },
+                        { name: locale === "id" ? "Sektor Jawa" : "Java Sector", count: sectorJava, color: "bg-amber-500" },
+                        { name: locale === "id" ? "Sektor Sulawesi" : "Sulawesi Sector", count: sectorSulawesi, color: "bg-rose-500" },
+                        { name: locale === "id" ? "Laut Banda" : "Banda Sea", count: sectorBanda, color: "bg-red-500" },
+                        { name: locale === "id" ? "Sektor Papua" : "Papua Sector", count: sectorPapua, color: "bg-stone-500" },
+                      ].map((sector) => {
+                        const percentage = statsTotal > 0 ? (sector.count / statsTotal) * 100 : 0;
+                        return (
+                          <div key={sector.name} className="space-y-1">
+                            <div className="flex justify-between font-mono text-[9px] font-semibold text-stone-600">
+                              <span>{sector.name}</span>
+                              <span>{sector.count} ({Math.round(percentage)}%)</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-stone-200/60 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full ${sector.color} transition-all duration-500`}
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Sparkling AI Briefing Trigger Button */}
+                  <div className="pt-2 border-t border-stone-200/50">
+                    <button
+                      onClick={generateAIBriefing}
+                      disabled={loadingBriefing}
+                      className="w-full bg-gradient-to-r from-stone-900 via-stone-850 to-stone-900 text-white hover:from-black hover:to-stone-950 font-sans text-xs font-bold py-2 px-3 rounded-lg flex items-center justify-center space-x-2 shadow-md hover:shadow-lg active:scale-[0.98] transition-all relative overflow-hidden group disabled:opacity-75 disabled:pointer-events-none"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin-slow group-hover:scale-110 transition-transform" />
+                      <span>
+                        {loadingBriefing 
+                          ? (locale === "id" ? "Menganalisis..." : "Analyzing...") 
+                          : t.generateBriefing}
+                      </span>
+                      
+                      {/* Subtle pulsing background glow */}
+                      <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none animate-pulse" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
