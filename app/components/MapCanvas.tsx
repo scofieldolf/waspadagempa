@@ -1449,7 +1449,7 @@ export default function MapCanvas({
 
       {/* Legend Overlay — Floating Top-Right on both Mobile and Desktop to avoid overlapping other panels */}
       {(showEarthquakes || showClimateRisk || showTectonicPlates || showHeatmap) && (
-        <div className="absolute top-4 right-4 md:top-6 md:right-6 z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-3.5 rounded-xl shadow-lg text-stone-800 w-[180px] md:w-[210px] flex flex-col space-y-3 font-sans animate-fadeIn">
+        <div className="absolute top-24 right-4 md:top-6 md:right-6 z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-3.5 rounded-xl shadow-lg text-stone-800 w-[180px] md:w-[210px] flex flex-col space-y-3 font-sans animate-fadeIn">
           {/* Legend Title / Collapsible Toggle */}
           <div 
             onClick={() => setLegendExpanded(!legendExpanded)}

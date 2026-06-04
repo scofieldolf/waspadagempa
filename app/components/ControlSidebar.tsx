@@ -199,7 +199,7 @@ export default function ControlSidebar({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        <div className="flex-1 overflow-y-auto p-6 pb-16 space-y-8">
           
           {/* Section 1: Earthquake Monitor */}
           <div className="space-y-4">
