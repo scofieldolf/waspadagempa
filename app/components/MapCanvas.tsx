@@ -731,7 +731,7 @@ export default function MapCanvas({
       )}
 
       {/* Live Data Status Indicator — top-left of map */}
-      <div className={`absolute top-4 ${sidebarCollapsed ? "left-16" : "left-4"} z-[500] pointer-events-none flex flex-col space-y-2 items-start transition-[left] duration-300`}>
+      <div className={`absolute top-4 ${sidebarCollapsed ? "left-16" : "left-16 md:left-4"} z-[500] pointer-events-none flex flex-col space-y-2 items-start transition-[left] duration-300`}>
         <div className="pointer-events-auto flex items-center space-x-2 bg-stone-50/95 backdrop-blur-md border border-stone-200/60 px-3 py-1.5 rounded-lg shadow-sm font-mono text-[10px]">
           {isLoading ? (
             <>
@@ -1090,7 +1090,7 @@ export default function MapCanvas({
 
       {/* 📊 Bottom-Left Panels Container (Playback Controller, Statistics Dashboard & Safe Radius Calculator) */}
       {(showTimeTravel || showStatsDashboard || (userLocation && activeNearestEarthquake)) && (
-        <div className="absolute bottom-6 left-4 right-4 md:left-6 md:right-auto md:w-[300px] z-[500] pointer-events-none flex flex-col gap-3">
+        <div className="absolute bottom-6 left-4 right-4 md:left-6 md:right-auto md:w-[300px] z-[500] pointer-events-none flex flex-col gap-3 max-w-[calc(100vw-8rem)]">
           
           {/* Safe Radius Calculator Card (Mobile only) */}
           {userLocation && activeNearestEarthquake && (
@@ -1242,7 +1242,15 @@ export default function MapCanvas({
                     {t.statsDashboard}
                   </span>
                 </div>
-                <button className="text-stone-400 hover:text-stone-700">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setStatsExpanded(!statsExpanded);
+                  }}
+                  className="text-stone-400 hover:text-stone-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 rounded"
+                  aria-label="Toggle statistics dashboard"
+                  aria-expanded={statsExpanded}
+                >
                   {statsExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                 </button>
               </div>
@@ -1431,7 +1439,7 @@ export default function MapCanvas({
 
       {/* 🔔 Floating top-center Absolute Toast Notifications Overlay */}
       {toastAlert && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-red-200 p-4 rounded-xl shadow-xl w-[280px] font-sans flex flex-col space-y-2.5 animate-fadeIn border-l-4 border-l-red-500">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-red-200 p-4 rounded-xl shadow-xl w-[calc(100vw-2rem)] max-w-[280px] font-sans flex flex-col space-y-2.5 animate-fadeIn border-l-4 border-l-red-500">
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 rounded-full bg-red-600 animate-ping shrink-0" />
@@ -1439,9 +1447,10 @@ export default function MapCanvas({
                 {toastAlert.tsunami ? t.alertTsunami : t.alertMajor}
               </span>
             </div>
-            <button 
+            <button
               onClick={() => setToastAlert(null)}
-              className="text-stone-400 hover:text-stone-700 transition-colors"
+              className="text-stone-400 hover:text-stone-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 rounded"
+              aria-label="Close alert"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -1475,7 +1484,7 @@ export default function MapCanvas({
       )}
 
       {/* Floating Overlays Container on bottom-right of Map */}
-      <div className="absolute bottom-6 right-6 z-[500] pointer-events-none flex flex-col items-end space-y-3">
+      <div className="absolute bottom-6 right-4 md:right-6 z-[500] pointer-events-none flex flex-col items-end space-y-3">
         {/* Safe Radius Calculator Card (Desktop only) */}
         {userLocation && activeNearestEarthquake && (
           <div className="hidden md:flex pointer-events-auto bg-stone-900/95 text-stone-100 backdrop-blur-md border border-stone-850 p-4 rounded-xl shadow-lg w-[240px] flex flex-col space-y-2.5 font-sans animate-fadeIn">
@@ -1530,7 +1539,7 @@ export default function MapCanvas({
 
       {/* Legend Overlay — Floating Top-Right on both Mobile and Desktop to avoid overlapping other panels */}
       {(showEarthquakes || showClimateRisk || showTectonicPlates || showHeatmap) && (
-        <div className="absolute top-24 right-4 md:top-6 md:right-6 z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-3.5 rounded-xl shadow-lg text-stone-800 w-[180px] md:w-[210px] flex flex-col space-y-3 font-sans animate-fadeIn">
+        <div className="absolute top-16 right-4 md:top-6 md:right-6 z-[500] pointer-events-auto bg-stone-50/95 backdrop-blur-md border border-stone-200/60 p-3.5 rounded-xl shadow-lg text-stone-800 w-[180px] md:w-[210px] flex flex-col space-y-3 font-sans animate-fadeIn">
           {/* Legend Title / Collapsible Toggle */}
           <div 
             onClick={() => setLegendExpanded(!legendExpanded)}
@@ -1540,7 +1549,15 @@ export default function MapCanvas({
               <Compass className="w-4 h-4 text-stone-500 animate-spin-slow" />
               <span className="text-[11px] font-bold text-stone-900 uppercase tracking-wider font-mono">{t.legend}</span>
             </div>
-            <button className="text-stone-400 hover:text-stone-700 transition-colors">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLegendExpanded(!legendExpanded);
+              }}
+              className="text-stone-400 hover:text-stone-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 rounded"
+              aria-label="Toggle legend"
+              aria-expanded={legendExpanded}
+            >
               {legendExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
             </button>
           </div>

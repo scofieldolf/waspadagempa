@@ -178,11 +178,21 @@ export default function ControlSidebar({
   };
 
   return (
-    <div className="relative flex h-full select-none z-[1001]">
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {!sidebarCollapsed && (
+        <div
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[1000] md:hidden"
+          onClick={() => setSidebarCollapsed(true)}
+        />
+      )}
+
       {/* Sidebar Panel Container */}
       <div
-        className={`h-full bg-stone-50/95 backdrop-blur-md border-r border-stone-200/60 transition-all duration-300 ease-in-out flex flex-col shadow-xl shadow-stone-900/5 ${
-          sidebarCollapsed ? "w-0 overflow-hidden border-r-0" : "w-full md:w-[340px]"
+        className={`fixed md:relative h-full bg-stone-50/98 backdrop-blur-md border-r border-stone-200/60 transition-all duration-300 ease-in-out flex flex-col shadow-xl shadow-stone-900/10 z-[1001] ${
+          sidebarCollapsed
+            ? "w-0 overflow-hidden border-r-0 -translate-x-full md:translate-x-0"
+            : "w-[85vw] max-w-[340px] md:w-[340px] translate-x-0"
         }`}
       >
         {/* Header */}
@@ -230,6 +240,7 @@ export default function ControlSidebar({
               onClick={() => setSidebarCollapsed(true)}
               className="p-1.5 rounded-md hover:bg-stone-200/50 text-stone-500 hover:text-stone-800 transition-all active:scale-95"
               title="Collapse Sidebar"
+              aria-label="Collapse Sidebar"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -255,6 +266,8 @@ export default function ControlSidebar({
                 className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
                   showEarthquakes ? "bg-stone-900" : "bg-stone-200"
                 }`}
+                aria-label={t.showEarthquakes || "Toggle earthquakes"}
+                aria-pressed={showEarthquakes}
               >
                 <div
                   className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 transform ${
@@ -487,6 +500,8 @@ export default function ControlSidebar({
                 className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
                   showClimateRisk ? "bg-stone-900" : "bg-stone-200"
                 }`}
+                aria-label={t.climateRisk || "Toggle climate risk"}
+                aria-pressed={showClimateRisk}
               >
                 <div
                   className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 transform ${
@@ -584,6 +599,8 @@ export default function ControlSidebar({
                 className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
                   showTectonicPlates ? "bg-stone-900" : "bg-stone-200"
                 }`}
+                aria-label={t.tectonicPlates || "Toggle tectonic plates"}
+                aria-pressed={showTectonicPlates}
               >
                 <div
                   className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 transform ${
@@ -660,6 +677,8 @@ export default function ControlSidebar({
                 className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
                   showHeatmap ? "bg-stone-900" : "bg-stone-200"
                 }`}
+                aria-label={t.heatmap || "Toggle heatmap"}
+                aria-pressed={showHeatmap}
               >
                 <div
                   className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 transform ${
@@ -685,6 +704,8 @@ export default function ControlSidebar({
                 className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
                   showTimeTravel ? "bg-stone-900" : "bg-stone-200"
                 }`}
+                aria-label={t.timeTravel || "Toggle time travel"}
+                aria-pressed={showTimeTravel}
               >
                 <div
                   className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 transform ${
@@ -710,6 +731,8 @@ export default function ControlSidebar({
                 className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
                   showStatsDashboard ? "bg-stone-900" : "bg-stone-200"
                 }`}
+                aria-label={t.statsDashboard || "Toggle stats dashboard"}
+                aria-pressed={showStatsDashboard}
               >
                 <div
                   className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 transform ${
@@ -830,12 +853,13 @@ export default function ControlSidebar({
       {sidebarCollapsed && (
         <button
           onClick={() => setSidebarCollapsed(false)}
-          className="absolute left-4 top-4 w-10 h-10 rounded-lg bg-stone-50 hover:bg-stone-100 text-stone-800 shadow-md border border-stone-200 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 z-40 focus:outline-none"
+          className="fixed md:absolute left-4 top-4 w-10 h-10 rounded-lg bg-stone-50 hover:bg-stone-100 text-stone-800 shadow-md border border-stone-200 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 z-[1002] focus:outline-none"
           title="Expand Sidebar"
+          aria-label="Expand Sidebar"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
       )}
-    </div>
+    </>
   );
 }
