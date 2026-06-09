@@ -266,7 +266,7 @@ export default function ControlSidebar({
                 className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
                   showEarthquakes ? "bg-stone-900" : "bg-stone-200"
                 }`}
-                aria-label={t.showEarthquakes || "Toggle earthquakes"}
+                aria-label={t.earthquakeMonitor || "Toggle earthquakes"}
                 aria-pressed={showEarthquakes}
               >
                 <div
