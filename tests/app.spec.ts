@@ -31,8 +31,8 @@ test.describe('Waspadagempa Frontend E2E', () => {
   });
 
   test('should toggle sidebar visibility', async ({ page }) => {
-    // Locate sidebar by traversing up from the Waspadagempa heading
-    const sidebar = page.locator('h1', { hasText: 'Waspadagempa' }).locator('xpath=../../..');
+    // Locate sidebar by traversing up 4 levels from the Waspadagempa heading
+    const sidebar = page.locator('h1', { hasText: 'Waspadagempa' }).locator('xpath=../../../..');
 
     // Collapse sidebar
     const collapseButton = page.locator('button[aria-label="Collapse Sidebar"]').first();
