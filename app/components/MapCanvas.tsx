@@ -2,10 +2,9 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Polygon, useMapEvents, Polyline, Circle } from "react-leaflet";
-import L from "leaflet";
 import { MockEarthquake } from "./ControlSidebar";
-import { 
-  Clock, Waves, Compass, AlertCircle, MapPin, AlertTriangle, Radar, RefreshCw,
+import {
+  Clock, Waves, Compass, AlertCircle, AlertTriangle, Radar, RefreshCw,
   Play, Pause, BarChart3, Sparkles, ChevronUp, ChevronDown, Check, Copy, X, Navigation
 } from "lucide-react";
 import { Locale, translations } from "./translations";
@@ -159,16 +158,11 @@ interface MapCanvasProps {
   showTectonicPlates: boolean;
   // New features
   showHeatmap: boolean;
-  setShowHeatmap: (show: boolean) => void;
   showTimeTravel: boolean;
-  setShowTimeTravel: (show: boolean) => void;
   showStatsDashboard: boolean;
-  setShowStatsDashboard: (show: boolean) => void;
   // Final features
   dataSource: "usgs" | "bmkg";
-  setDataSource: (source: "usgs" | "bmkg") => void;
   colorMode: "magnitude" | "depth";
-  setColorMode: (mode: "magnitude" | "depth") => void;
   onDataLoaded?: (eqs: MockEarthquake[]) => void;
 }
 
@@ -233,15 +227,10 @@ export default function MapCanvas({
   setSelectedEarthquake,
   showTectonicPlates,
   showHeatmap,
-  setShowHeatmap,
   showTimeTravel,
-  setShowTimeTravel,
   showStatsDashboard,
-  setShowStatsDashboard,
   dataSource,
-  setDataSource,
   colorMode,
-  setColorMode,
   onDataLoaded
 }: MapCanvasProps) {
   
@@ -272,7 +261,7 @@ export default function MapCanvas({
   // Dual tone sound generator using Web Audio API
   const playAlertSound = useCallback(() => {
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       const osc1 = audioCtx.createOscillator();
       const osc2 = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
@@ -316,8 +305,10 @@ export default function MapCanvas({
   // Adjust playbackIndex to end of list when Time Travel triggers
   useEffect(() => {
     if (showTimeTravel) {
-      setPlaybackIndex(Math.max(0, chronologicalEarthquakes.length - 1));
-      setIsPlaying(false);
+      setTimeout(() => {
+        setPlaybackIndex(Math.max(0, chronologicalEarthquakes.length - 1));
+        setIsPlaying(false);
+      }, 0);
     }
   }, [showTimeTravel, chronologicalEarthquakes.length]);
 
@@ -367,8 +358,10 @@ export default function MapCanvas({
   // Auto-collapse panels on mobile to keep viewport clean
   useEffect(() => {
     if (typeof window !== "undefined" && window.innerWidth < 768) {
-      setStatsExpanded(false);
-      setLegendExpanded(false);
+      setTimeout(() => {
+        setStatsExpanded(false);
+        setLegendExpanded(false);
+      }, 0);
     }
   }, []);
 
@@ -441,9 +434,10 @@ export default function MapCanvas({
           regional.forEach((eq) => notifiedIdsRef.current.add(eq.id));
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       clearTimeout(timeoutId);
-      if (err.name === "AbortError") {
+      const error = err as { name?: string };
+      if (error.name === "AbortError") {
         setDataError(locale === "id" ? "Koneksi timeout. Silakan coba lagi." : "Connection timed out. Please try again.");
       } else {
         setDataError(locale === "id" ? "Gagal memuat data seismik" : "Failed to load seismic data");
@@ -455,7 +449,9 @@ export default function MapCanvas({
 
   // Auto-fetch on mount, when Time Travel period shifts, or when active Data Source changes (polling every 5 minutes)
   useEffect(() => {
-    fetchEarthquakes(showTimeTravel ? "week" : "day", dataSource);
+    setTimeout(() => {
+      fetchEarthquakes(showTimeTravel ? "week" : "day", dataSource);
+    }, 0);
     const interval = setInterval(() => {
       fetchEarthquakes(showTimeTravel ? "week" : "day", dataSource);
     }, 5 * 60 * 1000); // 5 minutes interval
@@ -468,7 +464,9 @@ export default function MapCanvas({
       // Find the strongest quake or any tsunami warning in the current feed
       const strongQuake = earthquakes.find(q => q.mag >= 6.0 || q.tsunami);
       if (strongQuake) {
-        setToastAlert(strongQuake);
+        setTimeout(() => {
+          setToastAlert(strongQuake);
+        }, 0);
         const timer = setTimeout(() => setToastAlert(null), 10000); // show for 10 seconds
         return () => clearTimeout(timer);
       }
@@ -493,15 +491,29 @@ export default function MapCanvas({
     );
   };
 
-  // Format last updated readout
-  const formatLastUpdated = (date: Date): string => {
-    const diffMs = Date.now() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return locale === "id" ? "Baru saja" : "Just now";
-    if (diffMins < 60) return locale === "id" ? `${diffMins}m lalu` : `${diffMins}m ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    return locale === "id" ? `${diffHours}j lalu` : `${diffHours}h ago`;
-  };
+  // State to hold formatted last updated string cleanly
+  const [lastUpdatedText, setLastUpdatedText] = useState<string>("");
+
+  useEffect(() => {
+    if (!lastUpdated) return;
+    const updateTimeText = () => {
+      const diffMs = Date.now() - lastUpdated.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      let text = "";
+      if (diffMins < 1) {
+        text = locale === "id" ? "Baru saja" : "Just now";
+      } else if (diffMins < 60) {
+        text = locale === "id" ? `${diffMins}m lalu` : `${diffMins}m ago`;
+      } else {
+        const diffHours = Math.floor(diffMins / 60);
+        text = locale === "id" ? `${diffHours}j lalu` : `${diffHours}h ago`;
+      }
+      setLastUpdatedText(text);
+    };
+    updateTimeText();
+    const timer = setInterval(updateTimeText, 60000);
+    return () => clearInterval(timer);
+  }, [lastUpdated, locale]);
 
   // Filter live earthquake data based on magnitude filter criteria
   const filteredEarthquakes = activeEarthquakePool.filter((eq) => {
@@ -532,7 +544,6 @@ export default function MapCanvas({
   // Calculate statistics metrics dynamically
   const statsTotal = filteredEarthquakes.length;
   let statsMaxMag = 0;
-  let statsMaxLoc = "N/A";
   let statsTsunami = 0;
   let statsTotalDepth = 0;
 
@@ -541,12 +552,10 @@ export default function MapCanvas({
   let sectorSulawesi = 0;
   let sectorBanda = 0;
   let sectorPapua = 0;
-  let sectorOthers = 0;
 
   filteredEarthquakes.forEach((eq) => {
     if (eq.mag > statsMaxMag) {
       statsMaxMag = eq.mag;
-      statsMaxLoc = eq.location;
     }
     if (eq.tsunami) statsTsunami++;
     statsTotalDepth += eq.depth;
@@ -568,8 +577,6 @@ export default function MapCanvas({
       sectorBanda++;
     } else if (isPapua) {
       sectorPapua++;
-    } else {
-      sectorOthers++;
     }
   });
 
@@ -628,7 +635,7 @@ export default function MapCanvas({
   };
 
   // Calculate polygon visual styles dynamically for Climate Risk Years
-  const getClimateAreaStyles = (area: ClimateRiskArea) => {
+  const getClimateAreaStyles = () => {
     const progressionIndex = climateYear === 2026 ? 0.25 : climateYear === 2030 ? 0.45 : climateYear === 2040 ? 0.70 : 0.95;
     
     let fillColor = "#10b981"; // emerald for 2026
@@ -765,7 +772,7 @@ export default function MapCanvas({
               {lastUpdated && (
                 <>
                   <span className="text-stone-200">|</span>
-                  <span className="text-stone-400">{formatLastUpdated(lastUpdated)}</span>
+                  <span className="text-stone-400">{lastUpdatedText}</span>
                 </>
               )}
               <button
@@ -824,7 +831,7 @@ export default function MapCanvas({
         {/* Climate Risk Overlays */}
         {showClimateRisk &&
           CLIMATE_RISK_AREAS.map((area, idx) => {
-            const styles = getClimateAreaStyles(area);
+            const styles = getClimateAreaStyles();
             return (
               <Polygon
                 key={`climate-risk-${idx}`}

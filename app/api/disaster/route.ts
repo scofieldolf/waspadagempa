@@ -1,10 +1,43 @@
 import { NextResponse } from "next/server";
 
+export interface NormalizedEarthquake {
+  id: string;
+  lat: number;
+  lng: number;
+  mag: number;
+  location: string;
+  time: string;
+  tsunami: boolean;
+  depth: number;
+}
+
+interface USGSFeature {
+  id?: string;
+  geometry?: {
+    coordinates?: [number, number, number];
+  };
+  properties?: {
+    mag?: number;
+    place?: string;
+    time?: number;
+    tsunami?: number;
+  };
+}
+
+interface BMKGGempaItem {
+  DateTime?: string;
+  Coordinates?: string;
+  Magnitude?: string;
+  Kedalaman?: string;
+  Wilayah?: string;
+  Potensi?: string;
+}
+
 // In-Memory cache state variables for both Day and Week periods
-let cachedDayData: any = null;
+let cachedDayData: NormalizedEarthquake[] | null = null;
 let lastFetchedDayTime: number = 0;
 
-let cachedWeekData: any = null;
+let cachedWeekData: NormalizedEarthquake[] | null = null;
 let lastFetchedWeekTime: number = 0;
 
 const CACHE_DURATION_DAY = 10 * 60 * 1000;  // 10 minutes
@@ -55,17 +88,18 @@ export async function GET(request: Request) {
     
     // 3. Data Sanitization & Normalization
     const features = rawData.features || [];
-    const normalizedData = features.map((feat: any) => {
+    const normalizedData: NormalizedEarthquake[] = (features as USGSFeature[]).map((feat: USGSFeature): NormalizedEarthquake => {
       const coordinates = feat.geometry?.coordinates || [0, 0, 0];
       const properties = feat.properties || {};
-      
+      const timeVal = properties.time ? new Date(properties.time).toISOString() : new Date().toISOString();
+
       return {
         id: feat.id || Math.random().toString(36).substring(2, 9),
         lat: coordinates[1], // Latitude
         lng: coordinates[0], // Longitude
         mag: properties.mag || 0,
         location: properties.place || "Unknown Location",
-        time: new Date(properties.time).toISOString(),
+        time: timeVal,
         tsunami: properties.tsunami === 1,
         depth: coordinates[2] || 0
       };
@@ -102,17 +136,17 @@ export async function GET(request: Request) {
       const bmkgRes = await fetch("https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json");
       if (bmkgRes.ok) {
         const rawData = await bmkgRes.json();
-        const gempas = rawData?.Infogempa?.gempa || [];
-        const normalizedData = gempas.map((item: any) => {
+        const gempas: BMKGGempaItem[] = rawData?.Infogempa?.gempa || [];
+        const normalizedData: NormalizedEarthquake[] = gempas.map((item: BMKGGempaItem): NormalizedEarthquake => {
           const coords = (item.Coordinates || "0,0").split(",");
           const lat = parseFloat(coords[0]) || 0;
           const lng = parseFloat(coords[1]) || 0;
-          const mag = parseFloat(item.Magnitude) || 0;
+          const mag = parseFloat(item.Magnitude || "0") || 0;
           const depth = parseInt((item.Kedalaman || "0").replace(/\D/g, "")) || 0;
           const potensi = (item.Potensi || "").toLowerCase();
           const tsunami = potensi.includes("tsunami") && !potensi.includes("tidak");
           const id = item.DateTime ? `bmkg-${item.DateTime.replace(/\D/g, "")}` : Math.random().toString(36).substring(2, 9);
-          
+
           return {
             id,
             lat,

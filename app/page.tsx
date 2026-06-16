@@ -108,22 +108,6 @@ const MapCanvas = dynamic(() => import("./components/MapCanvas"), {
 });
 
 export default function Home() {
-  useEffect(() => {
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((reg) => console.log("Service Worker registered:", reg.scope))
-        .catch((err) => console.error("Service Worker registration failed:", err));
-    }
-  }, []);
-
-  // Auto-collapse sidebar on mobile devices on initial load
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 768) {
-      setSidebarCollapsed(true);
-    }
-  }, []);
-
   // Centralized Application State
   const [locale, setLocale] = useState<Locale>("id"); // Default to Indonesian
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
@@ -142,9 +126,27 @@ export default function Home() {
   // Final Feature States
   const [dataSource, setDataSource] = useState<"usgs" | "bmkg">("usgs");
   const [colorMode, setColorMode] = useState<"magnitude" | "depth">("magnitude");
-  
+
   // Shared Earthquakes Pool for Sidebar Event List Panel
   const [earthquakesPool, setEarthquakesPool] = useState<MockEarthquake[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => console.log("Service Worker registered:", reg.scope))
+        .catch((err) => console.error("Service Worker registration failed:", err));
+    }
+  }, []);
+
+  // Auto-collapse sidebar on mobile devices on initial load
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setTimeout(() => {
+        setSidebarCollapsed(true);
+      }, 0);
+    }
+  }, []);
 
   return (
     <div className="flex w-full h-full overflow-hidden bg-stone-50 relative select-none">
@@ -195,16 +197,11 @@ export default function Home() {
           showTectonicPlates={showTectonicPlates}
           // New features
           showHeatmap={showHeatmap}
-          setShowHeatmap={setShowHeatmap}
           showTimeTravel={showTimeTravel}
-          setShowTimeTravel={setShowTimeTravel}
           showStatsDashboard={showStatsDashboard}
-          setShowStatsDashboard={setShowStatsDashboard}
           // Final features
           dataSource={dataSource}
-          setDataSource={setDataSource}
           colorMode={colorMode}
-          setColorMode={setColorMode}
           onDataLoaded={setEarthquakesPool}
         />
       </main>

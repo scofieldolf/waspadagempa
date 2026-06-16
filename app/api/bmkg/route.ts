@@ -1,7 +1,40 @@
 import { NextResponse } from "next/server";
 
+export interface NormalizedEarthquake {
+  id: string;
+  lat: number;
+  lng: number;
+  mag: number;
+  location: string;
+  time: string;
+  tsunami: boolean;
+  depth: number;
+}
+
+interface BMKGGempaItem {
+  DateTime?: string;
+  Coordinates?: string;
+  Magnitude?: string;
+  Kedalaman?: string;
+  Wilayah?: string;
+  Potensi?: string;
+}
+
+interface USGSFeature {
+  id?: string;
+  geometry?: {
+    coordinates?: [number, number, number];
+  };
+  properties?: {
+    mag?: number;
+    place?: string;
+    time?: number;
+    tsunami?: number;
+  };
+}
+
 // In-Memory cache state variables for BMKG feed
-let cachedBmkgData: any = null;
+let cachedBmkgData: NormalizedEarthquake[] | null = null;
 let lastFetchedBmkgTime: number = 0;
 const CACHE_DURATION_BMKG = 5 * 60 * 1000; // 5 minutes in milliseconds
 
@@ -41,22 +74,22 @@ export async function GET() {
     const rawData = await response.json();
     
     // 3. Data Sanitization & Normalization
-    const gempas = rawData?.Infogempa?.gempa || [];
-    const normalizedData = gempas.map((item: any) => {
+    const gempas: BMKGGempaItem[] = rawData?.Infogempa?.gempa || [];
+    const normalizedData = gempas.map((item: BMKGGempaItem): NormalizedEarthquake => {
       // Split coordinate strings e.g. "-6.45,101.25"
       const coords = (item.Coordinates || "0,0").split(",");
       const lat = parseFloat(coords[0]) || 0;
       const lng = parseFloat(coords[1]) || 0;
-      
-      const mag = parseFloat(item.Magnitude) || 0;
-      
+
+      const mag = parseFloat(item.Magnitude || "0") || 0;
+
       // Extract depth integer from string like "12 km"
       const depth = parseInt((item.Kedalaman || "0").replace(/\D/g, "")) || 0;
-      
+
       // Determine tsunami alert: if "potensi" contains "tsunami" and NOT "tidak"
       const potensi = (item.Potensi || "").toLowerCase();
       const tsunami = potensi.includes("tsunami") && !potensi.includes("tidak");
-      
+
       // Generate unique ID based on date-time and coordinates
       const id = item.DateTime ? `bmkg-${item.DateTime.replace(/\D/g, "")}` : Math.random().toString(36).substring(2, 9);
 
@@ -93,22 +126,23 @@ export async function GET() {
       if (usgsRes.ok) {
         const usgsData = await usgsRes.json();
         const features = usgsData.features || [];
-        const normalizedData = features
-          .map((feat: any) => {
+        const normalizedData: NormalizedEarthquake[] = (features as USGSFeature[])
+          .map((feat: USGSFeature): NormalizedEarthquake => {
             const coords = feat.geometry?.coordinates || [0, 0, 0];
             const properties = feat.properties || {};
+            const timeVal = properties.time ? new Date(properties.time).toISOString() : new Date().toISOString();
             return {
               id: feat.id || Math.random().toString(36).substring(2, 9),
               lat: coords[1],
               lng: coords[0],
               mag: properties.mag || 0,
               location: properties.place || "Unknown Location",
-              time: new Date(properties.time).toISOString(),
+              time: timeVal,
               tsunami: properties.tsunami === 1,
               depth: coords[2] || 0
             };
           })
-          .filter((eq: any) => 
+          .filter((eq: NormalizedEarthquake) =>
             eq.lat >= -11 && eq.lat <= 6 && eq.lng >= 95 && eq.lng <= 141
           );
 

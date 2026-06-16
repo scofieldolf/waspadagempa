@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Activity, 
-  Thermometer, 
-  AlertTriangle, 
+import React, { useState, useEffect } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Activity,
+  Thermometer,
+  AlertTriangle,
   Waves,
   MapPin,
   Clock,
@@ -18,8 +18,7 @@ import {
   BarChart3,
   Database,
   Map,
-  Bell,
-  Volume2
+  Bell
 } from "lucide-react";
 import { Locale, translations } from "./translations";
 
@@ -107,8 +106,10 @@ export default function ControlSidebar({
     if (typeof window !== "undefined") {
       const savedEnabled = localStorage.getItem("notif_enabled") === "true";
       const savedThreshold = parseFloat(localStorage.getItem("notif_threshold") || "5.0");
-      setNotifEnabled(savedEnabled);
-      setNotifThreshold(savedThreshold);
+      setTimeout(() => {
+        setNotifEnabled(savedEnabled);
+        setNotifThreshold(savedThreshold);
+      }, 0);
     }
   }, []);
 

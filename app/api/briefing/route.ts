@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 
+export interface NormalizedEarthquake {
+  id: string;
+  lat: number;
+  lng: number;
+  mag: number;
+  location: string;
+  time: string;
+  tsunami: boolean;
+  depth: number;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { earthquakes, locale = "id" } = body;
+    const { earthquakes } = body;
 
     if (!earthquakes || !Array.isArray(earthquakes)) {
       return NextResponse.json({ error: "Invalid data format" }, { status: 400 });
@@ -23,7 +34,7 @@ export async function POST(request: Request) {
     let papua = 0;
     let others = 0;
 
-    earthquakes.forEach((eq: any) => {
+    (earthquakes as NormalizedEarthquake[]).forEach((eq: NormalizedEarthquake) => {
       if (eq.mag > maxMag) {
         maxMag = eq.mag;
         maxLoc = eq.location;
@@ -138,14 +149,29 @@ Structure:
       provider: "local-analytical-engine",
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("AI Briefing failed:", error);
-    return NextResponse.json({ error: error.message || "Failed to generate briefing" }, { status: 500 });
+    const err = error as { message?: string };
+    return NextResponse.json({ error: err.message || "Failed to generate briefing" }, { status: 500 });
   }
 }
 
+interface BriefingStats {
+  total: number;
+  maxMag: number;
+  maxLoc: string;
+  tsunamiCount: number;
+  avgDepth: string;
+  sumatra: number;
+  java: number;
+  sulawesi: number;
+  banda: number;
+  papua: number;
+  others: number;
+}
+
 // Local Analytical Geological Engine
-function generateLocalBriefing(stats: any): string {
+function generateLocalBriefing(stats: BriefingStats): string {
   const {
     total,
     maxMag,
