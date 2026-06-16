@@ -117,6 +117,13 @@ export default function Home() {
     }
   }, []);
 
+  // Auto-collapse sidebar on mobile devices on initial load
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setSidebarCollapsed(true);
+    }
+  }, []);
+
   // Centralized Application State
   const [locale, setLocale] = useState<Locale>("id"); // Default to Indonesian
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
