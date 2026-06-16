@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import ControlSidebar, { MockEarthquake } from "./components/ControlSidebar";
-import { Locale } from "./components/translations";
+import { Locale, translations } from "./components/translations";
 
 const MapSkeleton = () => {
   const [showRetry, setShowRetry] = useState(false);
+  const [locale, setLocale] = useState<Locale>("id");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -14,6 +15,19 @@ const MapSkeleton = () => {
     }, 15000); // 15 seconds timeout
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedLocale = localStorage.getItem("locale") as Locale;
+      if (savedLocale === "en" || savedLocale === "id") {
+        setTimeout(() => {
+          setLocale(savedLocale);
+        }, 0);
+      }
+    }
+  }, []);
+
+  const t = translations[locale];
 
   return (
     <div className="w-full h-full flex bg-stone-50 relative select-none">
@@ -64,10 +78,10 @@ const MapSkeleton = () => {
                 </div>
                 <div className="space-y-1">
                   <span className="text-xs font-bold font-mono tracking-widest uppercase text-stone-600 block">
-                    Memuat Peta Seismik...
+                    {t.mapLoading}
                   </span>
                   <span className="text-[10px] text-stone-400 font-mono">
-                    Sedang menginisialisasi modul peta interaktif...
+                    {t.initializingMapModule}
                   </span>
                 </div>
               </>
@@ -80,17 +94,17 @@ const MapSkeleton = () => {
                 </div>
                 <div className="space-y-1">
                   <span className="text-xs font-bold font-mono tracking-widest uppercase text-red-500 block">
-                    Koneksi Lambat
+                    {t.slowConnection}
                   </span>
                   <span className="text-[10px] text-stone-500 font-mono leading-relaxed">
-                    Modul peta membutuhkan waktu lama untuk memuat. Coba muat ulang halaman.
+                    {t.mapLoadingLong}
                   </span>
                 </div>
                 <button
                   onClick={() => window.location.reload()}
                   className="px-4 py-2 bg-stone-900 hover:bg-black text-white font-bold text-xs rounded-lg shadow transition-all"
                 >
-                  Muat Ulang Halaman
+                  {t.reloadPage}
                 </button>
               </>
             )}
@@ -147,6 +161,13 @@ export default function Home() {
       }, 0);
     }
   }, []);
+
+  // Persist locale selections in localStorage to prevent reset on reload
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("locale", locale);
+    }
+  }, [locale]);
 
   return (
     <div className="flex w-full h-full overflow-hidden bg-stone-50 relative select-none">
