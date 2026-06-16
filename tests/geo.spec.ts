@@ -10,15 +10,16 @@ test.describe('calculateDistance Utility', () => {
   test('should correctly calculate distance between Jakarta and Surabaya', () => {
     // Jakarta: -6.2088, 106.8456
     // Surabaya: -7.2575, 112.7521
-    // Expected distance is ~760km
+    // Expected distance is ~662.6km
     const dist = calculateDistance(-6.2088, 106.8456, -7.2575, 112.7521);
-    expect(dist).toBeGreaterThan(750);
-    expect(dist).toBeLessThan(770);
+    expect(dist).toBeGreaterThan(650);
+    expect(dist).toBeLessThan(675);
+    expect(dist).toBe(662.6);
   });
 
   test('should handle coordinate boundaries and negative values', () => {
     const dist = calculateDistance(-90, -180, 90, 180);
-    // Across the globe (half circumference) is ~20015km
+    // Across the globe is ~20015km
     expect(dist).toBeCloseTo(20015, -2);
   });
 
